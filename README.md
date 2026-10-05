@@ -1,10 +1,10 @@
 # M31 independente — Cloudflare + Supabase
 
-Cópia do M31 separada do repositório conectado ao Base44. Origem: `c342879566d47d7b53ed8387687933e9c850085d`. Git iniciado sem histórico anterior e sem remote. Nenhum serviço foi publicado nem cliente exportado/importado nesta implementação.
+Cópia do M31 separada do repositório conectado ao Base44. Origem: `c342879566d47d7b53ed8387687933e9c850085d`. Git iniciado sem histórico anterior e publicado no repositório independente [paulobituhostflow/m31-refactor](https://github.com/paulobituhostflow/m31-refactor). A homologação está publicada em [M31 staging](https://m31-staging.paulobituadv.workers.dev/m31). Nenhum cliente real foi exportado ou importado.
 
 React/Vite/Tailwind preservam as telas atuais. O Worker com Hono atende `/api/*`; Supabase fornece PostgreSQL, Auth, Storage e Realtime. Cron/Queues executam jobs com outbox. Integrações externas começam bloqueadas e o desenvolvimento utiliza providers sintéticos.
 
-**Estado da entrega:** validação local concluída com PostgreSQL 17, Supabase Auth, PostgREST, Storage e Realtime reais, além do Worker e Queues locais. A stack isolada usa o SSD externo; o Docker dos outros projetos foi preservado. Integrações externas continuam simuladas. Consulte [o relatório de validação](docs/VALIDATION.md) para a cobertura e as etapas de homologação hospedada.
+**Estado da entrega:** validação local concluída e homologação hospedada publicada. Auth, API, Storage privado, Realtime e execução Cron/Queues foram conferidos no ambiente do cliente. Validação e deploy pelo GitHub Actions terminaram com sucesso. Providers são simulados localmente; staging usa modo live, com efeitos externos bloqueados e workflows pausados. Consulte [a validação hospedada](docs/REMOTE_VALIDATION.md) e [a bateria local](docs/VALIDATION.md) para a cobertura e os limites.
 
 ## Desenvolvimento
 
@@ -44,4 +44,4 @@ E2E_LIVE=1 E2E_BASE_URL=http://127.0.0.1:5173 npm run test:e2e
 
 ## Próxima etapa
 
-Você pode criar o novo repositório a partir desta pasta. Os ambientes de homologação e produção, seus projetos Supabase, filas, domínios e credenciais precisam ser criados e conferidos separadamente. O repositório original continua conectado ao Base44. A publicação e a migração real não fizeram parte desta execução.
+O repositório independente e o ambiente de homologação já existem. Produção exige recursos separados, domínio e credenciais próprios. Ainda faltam acesso operacional do cliente, configuração/homologação dos providers e ensaio de migração antes de qualquer troca. O repositório original continua conectado ao Base44 e não sofreu alterações. [CONTEXTO_PARA_CODEX.md](CONTEXTO_PARA_CODEX.md) orienta a continuidade.

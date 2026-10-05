@@ -1,10 +1,12 @@
 # Validação da entrega — 05/10/2026
 
+**Escopo histórico:** este relatório registra a bateria local anterior ao provisionamento. O estado atual da homologação, os deploys e a regressão adicional estão em [REMOTE_VALIDATION.md](REMOTE_VALIDATION.md).
+
 ## Resultado
 
 A validação local foi concluída com a stack real: PostgreSQL 17, Supabase Auth, PostgREST, Storage e Realtime, além do Worker e Queues locais no Wrangler/Miniflare. O impedimento anterior do Docker compartilhado foi contornado com uma VM isolada no SSD externo, preservando os serviços existentes. O roteiro para reproduzir o ambiente está em [LOCAL_VALIDATION.md](LOCAL_VALIDATION.md).
 
-O código passou pelos testes abaixo usando somente dados sintéticos. Integrações comerciais continuam simuladas. Não houve provisionamento remoto, exportação de clientes, envio externo, cobrança real, publicação ou mudança da produção Base44.
+O código passou pelos testes abaixo usando somente dados sintéticos. Integrações comerciais continuam simuladas. Durante esta etapa local não houve provisionamento remoto ou publicação. Em nenhuma etapa houve exportação/importação de clientes, envio externo, cobrança real ou mudança da produção Base44.
 
 ## Verificações executadas
 

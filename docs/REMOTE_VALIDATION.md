@@ -8,7 +8,7 @@
 - Banco: PostgreSQL 17; sete migrations aplicadas por transação via Management API, com os mesmos nomes/versões do repositório no histórico `supabase_migrations.schema_migrations`.
 - Catálogo: 69 entidades e 33 workflows registrados, todos pausados. Buckets: `m31-public` e `m31-private`.
 - Filas: `m31-staging-jobs` (`495949a59aca48069f81c3321316356b`) e `m31-staging-dlq` (`7937982619fe43d382ec79f0713c5964`). Consumer com três retries e DLQ.
-- Primeiro deploy manual por Wrangler: versão `8a257411-b913-4e99-8c5a-c54ee7ee7907`; código de aplicação baseado no commit `6217340c8cd3fdbea2a3bd443f26766d53343099`, configuração de staging atualizada nesta entrega.
+- Commit final da aplicação implantada: `e87b2ec819b696abc13b2affd724ff7903b3eb94`. Versão Worker publicada pela Action: `0c553786-2f61-4739-aaf1-ddb755344057`.
 
 ## Validação remota executada
 
@@ -27,13 +27,13 @@
 
 O environment `staging` no repositório `paulobituhostflow/m31-refactor` recebeu os quatro secrets do Worker, `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN` e a variable `APP_ORIGIN`. O token dedicado `m31-staging-github-actions` concede Workers Scripts Write, Queues Write e Account Settings Read apenas na conta cliente, com vencimento em **03/01/2027**. Deve ser renovado antes dessa data. Deploys continuam manuais por `workflow_dispatch`; publicação em produção exige ambiente separado.
 
-A primeira execução de deploy pelo GitHub é [37364817850](https://github.com/paulobituhostflow/m31-refactor/actions/runs/37364817850); uma nova execução será feita após a correção da sessão do perfil de leitura. Nenhum segredo é incluído neste relatório.
+A [validação 37365521748](https://github.com/paulobituhostflow/m31-refactor/actions/runs/37365521748) e o [deploy 37365531388](https://github.com/paulobituhostflow/m31-refactor/actions/runs/37365531388) concluíram com **sucesso** no commit `e87b2ec`. O deploy executou verify, publicou secrets/Worker e confirmou o smoke remoto. A CI de validação executou verify e Playwright com fixtures; os casos E2E_LIVE não são executados pela CI. Nenhum segredo é incluído neste relatório.
 
 ## Limites e operação
 
 `EXTERNAL_SIDE_EFFECTS=false` e `AUTOMATIONS_ENABLED=false`. Nenhum workflow ativo, webhook externo configurado, mensagem, cobrança, e-mail, planilha ou conteúdo de cliente migrado. Provider mode é `live`, mas credenciais externas não foram fornecidas e efeitos estão bloqueados. Google login/OAuth, SMTP, Asaas sandbox, UAZAPI, Brevo e OpenAI precisam de configuração e validação específicas antes do uso.
 
-A conta de validação, sua identidade, membro, sessão operacional, registros auxiliares e arquivo foram removidos. A conferência final confirmou ausência de membros sintéticos, arquivos e jobs de teste na outbox. Não foi criada uma conta operacional privilegiada para o cliente. O banco de staging começa sem os dados comerciais do Base44. Produção, domínio próprio, migração real e troca de endpoints não foram realizados.
+A conta de validação, sua identidade, membro, sessão operacional, registros auxiliares e arquivo foram removidos. A conferência final confirmou 69 entidades, 33 workflows, zero workflows habilitados, zero usuários Auth, participantes, arquivos, objetos Storage e jobs na outbox. Não foi criada uma conta operacional privilegiada para o cliente. O banco de staging começa sem os dados comerciais do Base44. Produção, domínio próprio, migração real e troca de endpoints não foram realizados.
 
 Os testes completos locais, inclusive fluxos financeiros com providers simulados, estão em `VALIDATION.md` e `LOCAL_VALIDATION.md`; esse resultado não equivale à homologação de providers reais.
 
@@ -53,4 +53,10 @@ A inspeção da landing identificou dois convites WhatsApp fixos herdados do pro
 - Upload/download Storage privado autorizado para a dona, conteúdo conferido e acesso anônimo negado com 401; arquivo removido.
 - Realtime hospedado entregou INSERT autorizado em `m31_changes` com identificadores e sem payload de negócio; registro de teste removido.
 - Cron hospedado acionou Queues, que executou `m31HealthCheck` e concluiu a outbox com uma tentativa. Nenhum provider foi chamado; job sintético removido.
-- O token específico do GitHub foi verificado e usado em um deploy real pelo Wrangler: versão `6e06ec5f-5ad2-4fec-9681-7e46a156a887`, baseada na aplicação do commit `d86e68e`. O workflow remoto permanece em acompanhamento até resultado terminal.
+- O token dedicado foi verificado e usado pelo deploy real no GitHub Actions. A versão final passou novamente no smoke HTTP após a publicação.
+- A landing final foi conferida sem links para grupos WhatsApp herdados.
+- Arquivos temporários do token CI, da sessão Supabase e da conta sintética foram removidos; secrets necessários permanecem em armazenamento protegido e no GitHub/Worker.
+
+## Setup oficial Cloudflare para Codex
+
+As instruções de [agent-setup/prompt.md](https://developers.cloudflare.com/agent-setup/prompt.md) foram executadas: 16 skills Cloudflare instaladas para Codex e MCP oficial `https://mcp.cloudflare.com/mcp` autenticado por OAuth com os acessos aprovados pelo usuário. Configuração anterior recebeu backup. Reabra o Codex para carregar o MCP na próxima sessão. O CLI opcional cf não foi instalado; o projeto continua usando Wrangler fixado no lockfile.
