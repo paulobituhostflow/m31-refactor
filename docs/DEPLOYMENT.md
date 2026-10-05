@@ -36,6 +36,8 @@ Em cada environment do GitHub, cadastre os secrets:
 - `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` e `SUPABASE_SERVICE_ROLE_KEY` do projeto daquele ambiente.
 - `TOKEN_ENCRYPTION_KEY`, aleatória com pelo menos 32 caracteres, própria daquele ambiente. Não rotacione sem migrar/recriptografar os tokens existentes.
 
+O grupo VIP público é configurado pela variable GitHub `WHATSAPP_GROUP_INVITE`, repassada ao build como `VITE_WHATSAPP_GROUP_INVITE`. Sem valor, a landing não mostra o link e o template de agradecimento começa com CTA vazio; nenhum convite da aplicação antiga é usado como fallback. O Worker usa um secret `WHATSAPP_GROUP_INVITE` configurado separadamente para os templates de mensagens.
+
 Cadastre `APP_ORIGIN` como variable HTTPS contendo a origem final do ambiente. O workflow injeta as variáveis públicas no build Vite e os quatro secrets obrigatórios no Worker. Chave publishable é pública; service role e chave de criptografia não entram no frontend.
 
 Credenciais opcionais dos providers são Worker secrets, cadastradas separadamente via prompt:

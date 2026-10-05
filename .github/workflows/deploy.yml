@@ -26,6 +26,7 @@ jobs:
       APP_ORIGIN: ${{ vars.APP_ORIGIN }}
       VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+      VITE_WHATSAPP_GROUP_INVITE: ${{ vars.WHATSAPP_GROUP_INVITE }}
       DEPLOY_ENV: ${{ inputs.environment }}
     steps:
       - uses: actions/checkout@v4

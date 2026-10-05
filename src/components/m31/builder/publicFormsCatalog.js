@@ -234,7 +234,7 @@ export const PUBLIC_FORMS = {
         titulo: 'Inscrição confirmada!',
         texto: 'Sua vaga está garantida. Entre no grupo para receber todas as informações.',
         cta_texto: 'ENTRAR NO GRUPO M31',
-        cta_url: 'https://chat.whatsapp.com/LpgGi4hOZ9pBygWDorsiX1',
+        cta_url: import.meta.env?.VITE_WHATSAPP_GROUP_INVITE || '',
         footer: 'M31 Filhas · Edição 2026',
       },
       campos: {},
