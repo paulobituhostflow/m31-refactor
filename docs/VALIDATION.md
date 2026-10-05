@@ -1,52 +1,65 @@
 # Validação da entrega — 05/10/2026
 
-## Resultado e limites
+## Resultado
 
-A cópia independente foi implementada e compilada. As verificações abaixo usam código local, dados sintéticos e fixtures. **A stack completa de Supabase não foi validada neste computador:** o download das imagens Docker falhou inicialmente por falta de espaço e, depois, por erro de entrada/saída do armazenamento do containerd. Não foram removidos volumes de outros projetos, reiniciados serviços existentes ou provisionados serviços remotos para contornar essa falha.
+A validação local foi concluída com a stack real: PostgreSQL 17, Supabase Auth, PostgREST, Storage e Realtime, além do Worker e Queues locais no Wrangler/Miniflare. O impedimento anterior do Docker compartilhado foi contornado com uma VM isolada no SSD externo, preservando os serviços existentes. O roteiro para reproduzir o ambiente está em [LOCAL_VALIDATION.md](LOCAL_VALIDATION.md).
 
-Isso impede afirmar que todos os fluxos já estão homologados com Supabase Auth, PostgREST, Storage e Realtime reais. Os testes de SQL/API ajudam a verificar o comportamento, mas não substituem essa etapa. Nenhuma credencial de cliente, exportação real, mensagem, cobrança, publicação ou troca de produção foi utilizada.
+O código passou pelos testes abaixo usando somente dados sintéticos. Integrações comerciais continuam simuladas. Não houve provisionamento remoto, exportação de clientes, envio externo, cobrança real, publicação ou mudança da produção Base44.
 
 ## Verificações executadas
 
-| Verificação                 | Resultado                               | Alcance                                                                                          |
-| --------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `npm run lint`              | Passou; 0 erros, 127 avisos             | Avisos de variáveis não utilizadas herdadas da interface                                         |
-| `npm run typecheck`         | Passou                                  | Runtime Worker, serviços e ferramentas novos; corpos de handlers legados conservam `@ts-nocheck` |
-| `npm test`                  | 240 passaram; 0 falhas, 0 ignorados     | Regras de domínio, SQL, API, autorização, providers e migração sintética                         |
-| `npm run build`             | Passou                                  | React/Vite; aviso de bundle grande, sem benchmark real de carga                                  |
-| `npm run build:worker`      | Passou                                  | Compilação e empacotamento local do Worker; sem publicação                                       |
-| `npm run check:artifacts`   | Passou                                  | Dependências/URLs de runtime Base44 ausentes; nenhum padrão de segredo privilegiado no build     |
-| `npm run test:e2e`          | 10 passaram; 3 ignorados explicitamente | Navegação com fixtures; os três testes da stack real dependem de `E2E_LIVE=1`                    |
-| Migrations SQL              | Sete aplicadas nos testes               | PostgreSQL PGlite; namespaces Auth/Storage preparados pelo harness, sem serviços Supabase reais  |
-| Wrangler staging/production | Empacotamento `--dry-run`               | Verificação dos ambientes e bindings; nenhum recurso remoto criado                               |
+| Verificação | Resultado | Alcance |
+| --- | --- | --- |
+| `npm run lint` | Passou; 0 erros, 127 avisos | Avisos de variáveis não utilizadas herdadas da interface |
+| `npm run typecheck` | Passou | Runtime Worker e ferramentas; corpos de handlers legados conservam `@ts-nocheck` |
+| `npm test` | 242 passaram; 0 falhas ou ignorados | Domínio, PostgreSQL PGlite, API, autorização, providers e migração sintética |
+| `npm run build` | Passou | React/Vite; bundle ainda grande, sem benchmark de carga real |
+| `npm run build:worker` | Passou | Empacotamento local; nenhuma publicação |
+| `npm run check:artifacts` | Passou | Runtime independente do Base44 e sem padrões de segredo privilegiado no build |
+| `npm run test:live` | 15 passaram; 0 falhas ou ignorados | API Worker contra Supabase real, arquivos, Realtime e filas locais |
+| Playwright com `E2E_LIVE=1` | 13 passaram; 0 falhas ou ignorados | 10 casos de interface com fixtures e 3 casos com login/API reais; dashboard com captura visual |
+| Migrations SQL | Sete aplicadas | PostgreSQL 17 real no Supabase local e PGlite na bateria de regressão |
+| Wrangler staging/production | Empacotamento `--dry-run` | Ambientes e bindings; nenhum recurso remoto criado |
 
-`npm run verify` executou lint, tipos, os 240 testes, build da interface, build do Worker e conferência dos artefatos, terminando com sucesso. Os testes de navegador passaram em uma execução posterior. O catálogo contém 69 entidades, 203 handlers e 33 workflows; essa contagem representa a implementação inventariada, **não 203 fluxos homologados individualmente**.
+`npm run verify` terminou com sucesso. As baterias finais da stack e do navegador foram executadas em sequência. O catálogo contém 69 entidades, 203 handlers e 33 workflows; isso descreve o inventário implementado, sem afirmar que os 203 fluxos receberam homologação individual.
 
-## Evidências de comportamento
+## Cobertura com serviços locais reais
 
-- SQL real em PGlite: commits atômicos, revisão concorrente, rollback de lotes, relações conhecidas, locks, duplicatas de webhook, leases expirados e RLS por setor/identidade, incluindo revogação e eventos de exclusão.
-- API Hono real contra SQL real através de transporte de teste: registro público e cookie de retomada, idempotência, check-in repetido, preservação de QR/pagamento, paginação com 1.006 registros e datas iguais, bloqueio de escrita genérica privilegiada e isolamento de conteúdo pastoral.
-- Identidade e arquivos na API: autorização de autora, tentativa de acesso por outro perfil, arquivo privado e vínculo ao registro. Auth e Storage são fixtures HTTP nesse conjunto; não comprovam login/URL assinada do Supabase hospedado.
-- Workflows: inicialização dos 33 itens pausados, nomes de steps exportados normalizados, argumentos e funções registrados, frequência/fuso efetivos. Os testes não executaram Cloudflare Queues, Cron ou DLQ remotos.
-- Migração: exportação criptografada de 603 registros com interrupção/retomada e datas iguais; checksums, chave incorreta, duplicatas e manifesto inválido. Importação de 207 registros no PostgreSQL de teste, interrupção/reexecução, ausência de jobs, preservação dos fixtures e recusa de sobrescrever destino alterado. Downloads reais Base44 e uploads reais Supabase não foram realizados.
-- Interface: oito URLs públicas, navegação mobile e contrato de login compatível com `access_token`, sem requisições aos assets Base44. Não houve comparação visual exaustiva de todas as telas, impressão ou exportações por perfil.
-- Providers: contratos, bloqueio de efeitos externos, restrições de sandbox/destinatários, registro de tentativas e resultados incertos verificados com respostas sintéticas. Asaas, UAZAPI, Brevo, Google e OpenAI não foram chamados com credenciais reais.
+- Auth: seis perfis entram por senha; UUID e identidade legada permanecem associados explicitamente. Sessão inválida, acesso anônimo e identidade revogada são recusados; cadastro público continua desativado. O cliente Supabase não lê diretamente tabelas de negócio.
+- Inscrição: checkout com Asaas sintético grava dados pelo PostgREST real; repetição com a mesma chave e cookie preserva resposta, inscrição e QR. Caravana e Servir conservam seus contratos e a restrição de parcelamento da caravana.
+- Camisas: duas peças geram um pedido e uma cobrança, com valor correto e token protegido no banco. A consulta pública do pedido funciona.
+- Cartinhas: a autora lista e salva; autosaves concorrentes retornam um sucesso e um conflito 409, preservando versão, autoria e histórico. Outro perfil recebe 403. O CRUD genérico não expõe texto pastoral, inclusive para administrador.
+- Transferência: link de uso único permite trocar CPF/telefone do titular correto sem perder inscrição, pagamento ou QR. Repetir a conclusão é recusado.
+- Check-in: perfil sem acesso recebe 403; repetir o QR pago não registra outra entrada nem altera pagamento.
+- Storage: upload e leitura autorizados, acesso anônimo/por outro perfil bloqueados e URL assinada expirada recusada. Arquivo migrado é armazenado e vinculado ao registro correto.
+- Realtime: evento autorizado chega por WebSocket real; RLS exclui o registro de outro setor. O evento contém metadados/ID, sem o conteúdo do registro.
+- Paginação: 1.006 registros com timestamps iguais são inseridos no PostgreSQL real e lidos pela API sem perda ou duplicata, acima do limite de 1.000 linhas por resposta do PostgREST.
+- Webhooks: autenticação obrigatória e entrega repetida do mesmo evento Asaas persistem exatamente um recibo e um job, atomicamente.
+- Cron/Queues locais: outbox persistido é consumido; job bem-sucedido tem uma tentativa. Falha sintética controlada chega a quatro tentativas e termina em estado `failed`, utilizando o caminho da fila de falhas; novo tick não o executa outra vez. Resultados financeiros incertos continuam exigindo revisão, sem retry automático.
+- Migração: registro com campo histórico adicional e arquivo criptografado são importados no Supabase real. Reexecução não duplica e não cria jobs. A bateria de regressão cobre interrupção/retomada, 603 registros exportados, 207 importados, checksums, relações, chave errada e recusa de sobrescrever destino alterado.
+- Navegador: URLs públicas, mobile e contrato de login passam com fixtures. Os três casos reais verificam login de gestão/dashboard, cartinhas com recusa de outro perfil e check-in repetido. A captura do dashboard e o relatório HTML ficam em diretórios ignorados pelo Git.
 
-## Etapa obrigatória antes de publicação
+## Ajustes encontrados durante a validação
 
-Com Docker saudável e espaço disponível, execute o roteiro do README: iniciar Supabase, aplicar migrations, configurar ambiente local, seed, build e `dev:full`. Rode `E2E_LIVE=1 E2E_BASE_URL=http://127.0.0.1:5173 npm run test:e2e` e confira manualmente os fluxos abaixo. Corrija as diferenças encontradas antes de homologação/produção.
+1. Provider de e-mail local: `[auth.email].enable_signup=true` habilita o login por senha nesta versão do serviço, enquanto `[auth].enable_signup=false` mantém o cadastro público bloqueado. O bloqueio foi confirmado pela API Auth real.
+2. Transferência pública: a autorização reconhece somente o token pendente, não expirado e vinculado à inscrição da função de conclusão. Assim, a alteração do CPF/telefone do novo titular não é indevidamente bloqueada; outros registros/funções continuam protegidos.
+3. Asaas sintético: resposta de atualização do cliente conserva `notificationDisabled`; pagamento conserva valor e referência solicitados. Isso permite validar checkout e pedidos sem efeitos externos.
+4. Cron local: rota de teste do Wrangler passa pelo Worker antes do fallback da SPA. Ela não foi adicionada como endpoint da aplicação em produção.
+5. Dashboard: o card de saúde foi conectado à API. Providers mock aparecem como `Simulado`, ausência de observação permanece explícita e os workflows pausados aparecem como `Pausadas`; o horário mostrado é o da consulta real, sem indicação fixa de disponibilidade. A verificação no navegador cobre essa exibição.
+6. Execução: builds podem recarregar o Worker e disputar memória com o navegador. A bateria final roda em sequência, com um worker Playwright na stack real. Uma execução concorrente apresentou 503 durante recarregamento e timeouts; esses casos passaram na repetição isolada, sem relaxar conteúdo ou autorização.
 
-1. Login por senha e Google, callback e recuperação; associação explícita de conta, membro ativo, setores, permissões e revogação.
-2. Inscrição, Pix/parcelamento sandbox, webhook repetido, retomada e transferência/substituição sem perder pagamento, QR, autoria ou histórico.
-3. Caravanas, Servir e camisas: agrupamento por pedido, quantidade por peça, cobrança contabilizada uma vez e estoque concorrente.
-4. Cartinhas: autosave em abas concorrentes, conflito 409, autoria, rascunho/histórico, anexos e áudio; outra conta não acessa conteúdo nem URLs temporárias.
-5. Check-in repetido, portal, tarefas/logística, fornecedores, contratos e financeiro; conferência de relatórios, impressão, exportações, responsividade e links públicos.
-6. Storage privado, expiração de URLs e Realtime autorizado, inclusive depois de excluir registro ou revogar conta.
-7. Integrações em sandbox/destinos de teste, OAuth Google próprio e schemas/transcrição OpenAI; falha entre resposta de provider e commit exige reconciliação.
-8. Queues/Cron reais: duplicatas, retries limitados, lease expirado, DLQ e reprocessamento idempotente. Workflows históricos permanecem pausados até revisão individual.
-9. Migração com arquivos sintéticos e identidades no Supabase completo; importar novamente sem duplicação, sem automações e sem alterações silenciosas em histórico/financeiro.
-10. Ensaio em homologação dos passos de corte e conferência de dados descritos em `MIGRATION.md`; somente depois preparar a migração real.
+## Limites e homologação hospedada
 
-## Preservação e entrega
+Esta entrega comprova o funcionamento local dos casos descritos. Não é um benchmark de volume/latência nem uma comparação visual completa de cada tela, relatório, impressão ou exportação. A camada de compatibilidade ainda lê entidades para reproduzir filtros legados; otimização SQL deverá manter os contratos.
 
-Origem: `c342879566d47d7b53ed8387687933e9c850085d`. O checkout original foi conferido limpo, no mesmo commit. A cópia tem Git próprio, sem remote ou histórico da origem, e arquivos de ambiente/exportações/cache/build ignorados. Os documentos de arquitetura, publicação e migração descrevem a configuração futura. Provisionamento, novo GitHub, dados reais e troca da operação permanecem fora desta execução.
+A próxima etapa, fora do escopo desta execução, exige projetos Supabase e Workers separados por ambiente, credenciais e configuração de domínio/OAuth/webhooks. Antes de produção, conferir:
+
+1. Google login, callback, recuperação e SMTP com configuração real; Google Drive/Sheets próprio e OpenAI Responses/transcrição.
+2. Asaas sandbox e destinatários de teste UAZAPI/Brevo, inclusive falha de provider, retorno incerto e reconciliação financeira.
+3. Workers hospedados, Queues/DLQ, Cron e reprocessamento no ambiente de homologação; conferir o conteúdo e a operação da DLQ remota. Os workflows permanecem pausados até revisão individual.
+4. Telas operacionais completas por perfil, impressão/exportações, fornecedores, contratos, financeiro e logística com fixtures representativos da operação.
+5. Ensaio da migração e do corte descrito em [MIGRATION.md](MIGRATION.md), conferência de contagens/relações/arquivos e bloqueio breve de escrita na exportação final. Dados reais não foram copiados nesta execução.
+
+## Preservação
+
+O repositório original permaneceu limpo em `c342879566d47d7b53ed8387687933e9c850085d`. A cópia tem Git independente e nenhum remote. Arquivos locais de ambiente, senhas sintéticas, cache, builds e relatórios privados continuam ignorados. Nenhum serviço ou configuração do Base44 foi alterado.

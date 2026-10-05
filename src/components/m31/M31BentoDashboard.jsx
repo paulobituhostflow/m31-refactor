@@ -461,11 +461,22 @@ function CardFunil({ metricas }) {
 
 /* ── Saúde do Sistema ──────────────────────────────────────────────────────── */
 function CardSaude() {
+  const { data: saude, isError } = useQuery({
+    queryKey: ['m31-dashboard-health'],
+    queryFn: async () => (await base44.functions.invoke('m31HealthCheck', {})).data,
+    refetchInterval: 60000,
+    retry: false,
+  });
+  const fallback = isError ? 'error' : 'unknown';
+  const providerLabel = (provider) => provider?.message?.includes('simulado')
+    ? 'Simulado'
+    : ({ success: 'Online', warning: 'Atenção', error: 'Indisponível', unknown: 'Sem observação' }[provider?.status || fallback]);
+  const automationFailed = (saude?.automations?.failed || 0) + (saude?.queue?.failed || 0);
   const servicos = [
-    { nome: 'ASAAS', status: 'online', icon: Shield },
-    { nome: 'UAZAPI', status: 'online', icon: Activity },
-    { nome: 'Webhooks', status: 'online', icon: Wifi },
-    { nome: 'Automações', status: 'degraded', icon: Zap },
+    { nome: 'ASAAS', status: saude?.asaas?.status || fallback, label: providerLabel(saude?.asaas), icon: Shield },
+    { nome: 'UAZAPI', status: saude?.uazapi?.status || fallback, label: providerLabel(saude?.uazapi), icon: Activity },
+    { nome: 'Webhooks', status: saude?.webhooks?.status || fallback, label: providerLabel(saude?.webhooks), icon: Wifi },
+    { nome: 'Automações', status: !saude ? fallback : automationFailed ? 'error' : saude.automations?.active ? 'success' : 'warning', label: !saude ? (isError ? 'Indisponível' : 'Consultando') : automationFailed ? `${automationFailed} falhas` : saude.automations?.active ? `${saude.automations.active} ativas` : 'Pausadas', icon: Zap },
   ];
 
   return (
@@ -473,7 +484,8 @@ function CardSaude() {
       <SectionLabel icon={Activity} label="Saúde do Sistema" color="#6366F1" />
       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
         {servicos.map((s, i) => {
-          const isOn = s.status === 'online';
+          const isOn = s.status === 'success';
+          const color = isOn ? SUCCESS : s.status === 'error' ? DANGER : s.status === 'unknown' ? MUTED : WARN;
           const svcHref = s.nome === 'ASAAS' ? '/m31-admin?tab=saude&focus=asaas'
             : s.nome === 'UAZAPI' ? '/m31-admin?tab=saude&focus=uazapi'
             : s.nome === 'Webhooks' ? '/m31-admin?tab=saude&focus=webhooks'
@@ -487,21 +499,21 @@ function CardSaude() {
             }}>
               <div style={{
                 width: '28px', height: '28px', borderRadius: '8px',
-                background: isOn ? `${SUCCESS}14` : `${WARN}14`,
+                background: `${color}14`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
-                <s.icon size={13} color={isOn ? SUCCESS : WARN} />
+                <s.icon size={13} color={color} />
               </div>
               <span style={{ fontSize: '12px', fontWeight: '500', color: TEXT, flex: 1 }}>{s.nome}</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <div style={{
                   width: '6px', height: '6px', borderRadius: '50%',
-                  background: isOn ? SUCCESS : WARN,
-                  boxShadow: isOn ? `0 0 8px ${SUCCESS}66` : `0 0 8px ${WARN}66`,
+                  background: color,
+                  boxShadow: `0 0 8px ${color}66`,
                   animation: isOn ? 'pulse-green 2s infinite' : 'none',
                 }} />
-                <span style={{ fontSize: '10px', fontWeight: '600', color: isOn ? SUCCESS : WARN }}>
-                  {s.status === 'online' ? 'Online' : 'Degradado'}
+                <span style={{ fontSize: '10px', fontWeight: '600', color }}>
+                  {s.label}
                 </span>
               </div>
             </div>
@@ -509,7 +521,7 @@ function CardSaude() {
         })}
       </div>
       <div onClick={nav('/m31-admin?tab=saude')} style={{ fontSize: '10px', color: MUTED, textAlign: 'center', cursor: 'pointer' }}>
-        Sincronizado há 2 min
+        {saude?.timestamp ? `Consultado às ${new Date(saude.timestamp).toLocaleTimeString('pt-BR')}` : isError ? 'Não foi possível consultar' : 'Consultando estados'}
       </div>
     </PremiumCard>
   );

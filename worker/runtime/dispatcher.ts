@@ -67,7 +67,7 @@ export async function invokeHandler(
     return undefined;
   };
   const provider = providerFetch(session);
-  const scopedEntities = guestEntities(work, session);
+  const scopedEntities = guestEntities(work, session, name);
   const trackedEntities = new Proxy(
     {},
     {

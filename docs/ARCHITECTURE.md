@@ -42,12 +42,12 @@ Todas as tabelas têm RLS. Apenas a identidade do próprio usuário e eventos au
 
 Arquivos públicos são restritos ao branding. Arquivos privados requerem identidade ativa e autorização de dono, financeiro ou registro relacionado; vínculos são gravados junto com a alteração de domínio. Conteúdo de cartinhas, inclusive áudio importado, exige a autora configurada e membro ativo; o perfil admin não substitui essa autorização. URLs assinadas expiram em até dez minutos.
 
-Realtime publica `m31_changes`, com escopo de perfil/setor e sem payload pastoral/financeiro. A entrega real pelo serviço Realtime permanece pendente de homologação. Eventos retêm somente metadados mínimos de autorização, permitindo que o recorte continue aplicável após a exclusão do registro.
+Realtime publica `m31_changes`, com escopo de perfil/setor e sem payload pastoral/financeiro. Entrega pelo serviço Realtime local e RLS por setor foram verificadas; a conexão ao projeto hospedado ainda depende da homologação. Eventos retêm somente metadados mínimos de autorização, permitindo que o recorte continue aplicável após a exclusão do registro.
 
 ## Jobs e falhas
 
 Os 33 workflows preservam condições, argumentos, cron/intervalo, fuso e limites efetivos. Todos começam pausados; inicialização não reativa jobs nem importa seu estado antigo de execução. Ative somente os workflows recorrentes necessários. Reparos e disparos históricos exigem revisão individual.
 
-Cron reserva jobs com lease e `SKIP LOCKED`; Queues recebe somente IDs do outbox. Consumidores verificam o lease, usam idempotência, limitam tentativas e registram falhas, com fila de falhas separada. Webhooks Asaas autenticados gravam recibo e job atomicamente; duplicatas não criam novo recibo/job. UAZAPI grava o job deduplicado antes de confirmar recebimento. A recuperação de jobs com lease expirado foi testada em SQL. Entrega real, retries e DLQ Cloudflare ainda não foram executados.
+Cron reserva jobs com lease e `SKIP LOCKED`; Queues recebe somente IDs do outbox. Consumidores verificam o lease, usam idempotência, limitam tentativas e registram falhas, com fila de falhas separada. Webhooks Asaas autenticados gravam recibo e job atomicamente; duplicatas não criam novo recibo/job. UAZAPI grava o job deduplicado antes de confirmar recebimento. A recuperação de jobs com lease expirado foi testada em SQL. Cron, entrega e retries foram exercitados no runtime local Wrangler/Miniflare com outbox no Supabase real. O job termina na quarta falha; Queues/DLQ hospedadas precisam de conferência na homologação.
 
 O painel de saúde usa dados de workflows, outbox e tentativas de providers. `unknown` significa que ainda não houve observação suficiente; não é sucesso simulado.

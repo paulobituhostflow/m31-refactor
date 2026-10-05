@@ -4,7 +4,7 @@ Cópia do M31 separada do repositório conectado ao Base44. Origem: `c342879566d
 
 React/Vite/Tailwind preservam as telas atuais. O Worker com Hono atende `/api/*`; Supabase fornece PostgreSQL, Auth, Storage e Realtime. Cron/Queues executam jobs com outbox. Integrações externas começam bloqueadas e o desenvolvimento utiliza providers sintéticos.
 
-**Estado da entrega:** compilação, testes de domínio/SQL/API e navegação com fixtures foram executados. A stack Supabase em Docker não conseguiu iniciar neste computador por falta de espaço seguida de erro de I/O do containerd. A autenticação real, Storage, Realtime e os fluxos completos com Supabase permanecem sem homologação. Consulte [o relatório de validação](docs/VALIDATION.md) antes de publicar.
+**Estado da entrega:** validação local concluída com PostgreSQL 17, Supabase Auth, PostgREST, Storage e Realtime reais, além do Worker e Queues locais. A stack isolada usa o SSD externo; o Docker dos outros projetos foi preservado. Integrações externas continuam simuladas. Consulte [o relatório de validação](docs/VALIDATION.md) para a cobertura e as etapas de homologação hospedada.
 
 ## Desenvolvimento
 
@@ -25,10 +25,11 @@ Interface: `http://127.0.0.1:5173`. Worker: `http://127.0.0.1:8787`. Supabase: `
 ```sh
 npm run verify
 npm run test:e2e
+npm run test:live
 E2E_LIVE=1 E2E_BASE_URL=http://127.0.0.1:5173 npm run test:e2e
 ```
 
-O último comando exige a stack e o seed ativos. Sem `E2E_LIVE`, Playwright usa fixtures de interface e deixa os testes da stack completa explicitamente pendentes. Não representa validação de Supabase Auth/Storage/Realtime.
+`test:live` e o último comando exigem Supabase, Worker e seed ativos; o Worker precisa iniciar com `npm run dev:api -- --test-scheduled` para validar Cron/Queues. Rode essas baterias em sequência para evitar contenção de memória com builds. Sem `E2E_LIVE`, Playwright usa fixtures de interface e deixa os testes da stack completa explicitamente pendentes. Não representa validação de Supabase Auth/Storage/Realtime.
 
 ## Organização
 
@@ -39,7 +40,7 @@ O último comando exige a stack e o seed ativos. Sem `E2E_LIVE`, Playwright usa 
 - `tools/migration/`: exportador isolado, validação, importação, associação de identidades e preparação de links.
 - `.github/workflows/`: validação de PRs e publicação manual, separada por ambiente.
 
-[Arquitetura e contratos](docs/ARCHITECTURE.md) · [Inventário e cobertura](docs/migration/CHECKLIST.md) · [Publicação e configuração](docs/DEPLOYMENT.md) · [Migração e troca futura](docs/MIGRATION.md) · [Validação e pendências](docs/VALIDATION.md).
+[Arquitetura e contratos](docs/ARCHITECTURE.md) · [Inventário e cobertura](docs/migration/CHECKLIST.md) · [Publicação e configuração](docs/DEPLOYMENT.md) · [Migração e troca futura](docs/MIGRATION.md) · [Validação e pendências](docs/VALIDATION.md) · [Stack local no SSD](docs/LOCAL_VALIDATION.md).
 
 ## Próxima etapa
 

@@ -16,6 +16,7 @@ const digits = (value: unknown) => String(value || "").replace(/\D/g, "");
 export function guestEntities(
   work: UnitOfWork,
   session: SessionContext,
+  functionName?: string,
 ): Record<string, EntityApi> {
   if (
     !session.guestHash ||
@@ -36,6 +37,25 @@ export function guestEntities(
       ].includes(token)
     )
       return true;
+    if (
+      name === "EventoM31Inscricao" &&
+      functionName === "m31ConcluirTransferencia" &&
+      typeof body.token === "string"
+    ) {
+      const transfers = await work
+        .entity("M31TransferenciaInscricao")
+        .filter(
+          { token: body.token, inscricao_id: row.id, status: "pendente" },
+          "-id",
+          2,
+        );
+      if (
+        transfers.length === 1 &&
+        (!transfers[0].token_expira_em ||
+          new Date(transfers[0].token_expira_em) > new Date())
+      )
+        return true;
+    }
     // Existing public self-service contracts require two matching identity fields.
     const cpf = digits(body.cpf),
       phone = digits(body.whatsapp || body.celular);

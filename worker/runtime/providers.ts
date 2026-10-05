@@ -65,10 +65,16 @@ function mockResponse(
         payload: `VALIDACAO_PIX_${id}`,
         expirationDate: "2099-01-01",
       });
-    if (path.includes("/customers"))
-      return Response.json(
-        init.method === "GET" ? { data: [] } : { id: `cus_${id}` },
-      );
+    if (path.includes("/customers")) {
+      if (init.method === "GET") return Response.json({ data: [] });
+      const body = typeof init.body === "string" ? JSON.parse(init.body) : {};
+      return Response.json({
+        ...body,
+        id: path.endsWith("/customers")
+          ? `cus_${id}`
+          : decodeURIComponent(path.split("/").at(-1)!),
+      });
+    }
     if (path.includes("/checkouts"))
       return Response.json({
         id: `chk_${id}`,
@@ -85,7 +91,13 @@ function mockResponse(
               id: `pay_${id}`,
               status: "PENDING",
               billingType: "PIX",
-              value: 120,
+              ...(typeof init.body === "string" ? JSON.parse(init.body) : {}),
+              value:
+                typeof init.body === "string"
+                  ? JSON.parse(init.body).value ||
+                    JSON.parse(init.body).totalValue ||
+                    120
+                  : 120,
               invoiceUrl: `http://127.0.0.1:5173/obrigado?mock=${id}`,
             },
       );

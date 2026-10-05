@@ -28,7 +28,8 @@
     "migration:identities": "tsx tools/migration/identities.ts",
     "local:configure": "node scripts/configure-local.mjs",
     "migration:invitations": "tsx tools/migration/invitations.ts",
-    "check:artifacts": "node scripts/check-artifacts.mjs"
+    "check:artifacts": "node scripts/check-artifacts.mjs",
+    "test:live": "node --import tsx --test --test-concurrency=1 tests/live/supabase.live.mjs"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^17.0.0",

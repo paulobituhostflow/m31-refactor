@@ -1,2 +1,25 @@
-import {defineConfig}from'@playwright/test';
-export default defineConfig({testDir:'tests/e2e',timeout:30000,workers:2,use:{baseURL:process.env.E2E_BASE_URL||'http://127.0.0.1:5175',browserName:'chromium',channel:process.env.CI?undefined:'chrome',trace:'retain-on-failure'},webServer:process.env.E2E_LIVE?undefined:{command:'npm run dev -- --port 5175',url:'http://127.0.0.1:5175',reuseExistingServer:false,env:{VITE_SUPABASE_URL:'http://127.0.0.1:54321',VITE_SUPABASE_PUBLISHABLE_KEY:'VALIDACAO_UI_FIXTURES_ONLY'}},reporter:[['list'],['html',{open:'never'}]]});
+import { defineConfig } from "@playwright/test";
+export default defineConfig({
+  testDir: "tests/e2e",
+  timeout: process.env.E2E_LIVE ? 60000 : 30000,
+  expect: { timeout: process.env.E2E_LIVE ? 15000 : 5000 },
+  workers: process.env.E2E_LIVE ? 1 : 2,
+  use: {
+    baseURL: process.env.E2E_BASE_URL || "http://127.0.0.1:5175",
+    browserName: "chromium",
+    channel: process.env.CI ? undefined : "chrome",
+    trace: process.env.E2E_LIVE ? "off" : "retain-on-failure",
+  },
+  webServer: process.env.E2E_LIVE
+    ? undefined
+    : {
+        command: "npm run dev -- --port 5175",
+        url: "http://127.0.0.1:5175",
+        reuseExistingServer: false,
+        env: {
+          VITE_SUPABASE_URL: "http://127.0.0.1:54321",
+          VITE_SUPABASE_PUBLISHABLE_KEY: "VALIDACAO_UI_FIXTURES_ONLY",
+        },
+      },
+  reporter: [["list"], ["html", { open: "never" }]],
+});

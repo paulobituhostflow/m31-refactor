@@ -37,7 +37,8 @@ test('recognition excludes tests and marked duplicates without changing financia
 test('independent app uses the same-origin API and never selects a backend from query parameters', () => {
  const source=fs.readFileSync(new URL('../src/lib/app-params.js',import.meta.url),'utf8');
  assert.match(source,/serverUrl: ''/); assert.doesNotMatch(source,/base44\.app|URLSearchParams|VITE_BASE44/);
- const config=JSON.parse(fs.readFileSync('wrangler.jsonc','utf8'));assert.deepEqual(config.assets.run_worker_first,['/api/*']);
+ const config=JSON.parse(fs.readFileSync('wrangler.jsonc','utf8'));assert.deepEqual(config.assets.run_worker_first,['/api/*','/__scheduled']);
+ assert.doesNotMatch(fs.readFileSync('worker/index.ts','utf8'),/app\.(get|post|all)\(['"]\/__scheduled/);
 });
 
 test('Servir lookup finds the volunteer rather than a paid participant sharing the identity', async () => {

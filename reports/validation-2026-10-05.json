@@ -1,0 +1,56 @@
+{
+  "date": "2026-10-05",
+  "scope": "local_synthetic_validation",
+  "source_commit": "c342879566d47d7b53ed8387687933e9c850085d",
+  "original_repository_unchanged": true,
+  "independent_repository_has_remote": false,
+  "checks": {
+    "regressions": {
+      "passed": 242,
+      "failed": 0,
+      "skipped": 0
+    },
+    "supabase_live": {
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0
+    },
+    "playwright": {
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0,
+      "fixture_cases": 10,
+      "live_cases": 3
+    },
+    "lint": {
+      "errors": 0,
+      "warnings": 127
+    },
+    "typecheck": "passed",
+    "frontend_build": "passed",
+    "worker_build": "passed",
+    "artifact_guard": "passed",
+    "staging_production_dry_run": "passed"
+  },
+  "stack": {
+    "postgres_major": 17,
+    "real_services": [
+      "Auth",
+      "PostgREST",
+      "Storage",
+      "Realtime"
+    ],
+    "cloudflare_runtime": "Wrangler/Miniflare local",
+    "migrations_applied": 7,
+    "workflows": 33,
+    "active_workflows": 0,
+    "provider_mode": "mock",
+    "external_side_effects": false,
+    "ssd_image": "/Volumes/981792018/Desenvolvimento/M31-Validation.sparsebundle",
+    "stopped_after_validation": true,
+    "synthetic_data_preserved": true
+  },
+  "remote_provisioning": false,
+  "production_deploy": false,
+  "customer_data_migrated": false
+}

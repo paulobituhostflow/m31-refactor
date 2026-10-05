@@ -32,9 +32,29 @@ await writeFile(
   `VITE_SUPABASE_URL=${url}\nVITE_SUPABASE_PUBLISHABLE_KEY=${anon}\n`,
   { mode: 0o600 },
 );
+const settings = {
+  ...old,
+  SUPABASE_URL: url,
+  SUPABASE_SERVICE_ROLE_KEY: service,
+  SUPABASE_PUBLISHABLE_KEY: anon,
+  TOKEN_ENCRYPTION_KEY: encryption,
+  APP_ORIGIN: "http://127.0.0.1:5173",
+  PROVIDER_MODE: "mock",
+  EXTERNAL_SIDE_EFFECTS: "false",
+  AUTOMATIONS_ENABLED: "false",
+  ASAAS_API_KEY: "LOCAL_MOCK_VALIDACAO",
+  UAZAPI_TOKEN: "LOCAL_MOCK_VALIDACAO",
+  BREVO_API_KEY: "LOCAL_MOCK_VALIDACAO",
+  ASAAS_WEBHOOK_TOKEN:
+    old.ASAAS_WEBHOOK_TOKEN || randomBytes(32).toString("hex"),
+  UAZAPI_WEBHOOK_TOKEN:
+    old.UAZAPI_WEBHOOK_TOKEN || randomBytes(32).toString("hex"),
+};
 await writeFile(
   ".dev.vars",
-  `SUPABASE_URL=${url}\nSUPABASE_SERVICE_ROLE_KEY=${service}\nSUPABASE_PUBLISHABLE_KEY=${anon}\nTOKEN_ENCRYPTION_KEY=${encryption}\nAPP_ORIGIN=http://127.0.0.1:5173\n`,
+  Object.entries(settings)
+    .map(([name, value]) => `${name}=${value}`)
+    .join("\n") + "\n",
   { mode: 0o600 },
 );
 console.log("Ambiente local configurado sem imprimir credenciais.");

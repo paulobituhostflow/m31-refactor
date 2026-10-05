@@ -105,3 +105,101 @@ test("all exported workflow DSL step names resolve to a registered handler witho
     { action: "executar" },
   );
 });
+
+test("transfer token authorizes only its linked registration, its conclusion handler and an unexpired pending transfer", async () => {
+  let transfer = {
+    id: "VALIDACAO_TRANSFER",
+    inscricao_id: "VALIDACAO_TARGET",
+    status: "pendente",
+    token_expira_em: "2099-01-01T00:00:00Z",
+  };
+  const rows = {
+    VALIDACAO_TARGET: { id: "VALIDACAO_TARGET" },
+    VALIDACAO_OTHER: { id: "VALIDACAO_OTHER" },
+  };
+  const work = {
+    entities: {},
+    entity: (name) =>
+      name === "M31TransferenciaInscricao"
+        ? {
+            filter: async (filter) =>
+              transfer.status === filter.status &&
+              transfer.inscricao_id === filter.inscricao_id
+                ? [transfer]
+                : [],
+          }
+        : {
+            get: async (id) => rows[id],
+            update: async (id, data) => ({ ...rows[id], ...data }),
+            filter: async () => Object.values(rows),
+          },
+  };
+  const caller = {
+    ...session,
+    guestHash: "VALIDACAO_GUEST",
+    guestBody: { token: "VALIDACAO_TRANSFER_TOKEN" },
+  };
+  const scope = guestEntities(work, caller, "m31ConcluirTransferencia");
+  assert.equal(
+    (
+      await scope.EventoM31Inscricao.update("VALIDACAO_TARGET", {
+        nome: "VALIDACAO New",
+      })
+    ).nome,
+    "VALIDACAO New",
+  );
+  await assert.rejects(
+    scope.EventoM31Inscricao.update("VALIDACAO_OTHER", {}),
+    (error) => error.status === 403,
+  );
+  await assert.rejects(
+    guestEntities(work, caller, "m31CreatePayment").EventoM31Inscricao.update(
+      "VALIDACAO_TARGET",
+      {},
+    ),
+    (error) => error.status === 403,
+  );
+  transfer = { ...transfer, token_expira_em: "2000-01-01T00:00:00Z" };
+  await assert.rejects(
+    scope.EventoM31Inscricao.update("VALIDACAO_TARGET", {}),
+    (error) => error.status === 403,
+  );
+  transfer = {
+    ...transfer,
+    token_expira_em: "2099-01-01T00:00:00Z",
+    status: "concluida",
+  };
+  await assert.rejects(
+    scope.EventoM31Inscricao.update("VALIDACAO_TARGET", {}),
+    (error) => error.status === 403,
+  );
+});
+test("Asaas fixture honors customer notification settings and the requested financial amount", async () => {
+  const fetch = providerFetch(session),
+    customer = await (
+      await fetch("https://api-sandbox.asaas.com/v3/customers", {
+        method: "POST",
+        body: JSON.stringify({ notificationDisabled: true }),
+      })
+    ).json();
+  const updated = await (
+    await fetch("https://api-sandbox.asaas.com/v3/customers/" + customer.id, {
+      method: "PUT",
+      body: JSON.stringify({ notificationDisabled: true }),
+    })
+  ).json();
+  assert.equal(updated.id, customer.id);
+  assert.equal(updated.notificationDisabled, true);
+  const payment = await (
+    await fetch("https://api-sandbox.asaas.com/v3/payments", {
+      method: "POST",
+      body: JSON.stringify({
+        value: 130,
+        billingType: "PIX",
+        externalReference: "VALIDACAO_ORDER",
+      }),
+    })
+  ).json();
+  assert.equal(payment.value, 130);
+  assert.equal(payment.externalReference, "VALIDACAO_ORDER");
+});
