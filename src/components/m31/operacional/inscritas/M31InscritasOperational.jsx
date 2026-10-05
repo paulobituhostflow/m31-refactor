@@ -1,0 +1,19 @@
+import M31ParticipanteOperacao from './M31ParticipanteOperacao';
+import { useState } from 'react';
+import { CheckCircle2, CircleAlert, Link2, MessageCircle } from 'lucide-react';
+import M31VinculoPagamento from './M31VinculoPagamento';
+import M31BottomSheet from '../M31BottomSheet';
+import M31OperationalListHeader from '../M31OperationalListHeader';
+import M31SkeletonList from '../M31SkeletonList';
+import { useM31OperationalList } from '@/hooks/useM31OperationalList';
+
+export default function M31InscritasOperational({ sessionId, onBack }) {
+  const [view, setView] = useState('todas'); const [search, setSearch] = useState(''); const [selected, setSelected] = useState(null); const [vinculo, setVinculo] = useState(false);
+  const query = useM31OperationalList(sessionId, 'inscritas', view, search);
+  return <section className="space-y-4">
+    <M31OperationalListHeader title="Inscritas" description="Cadastros de participantes, incluindo pagamentos em andamento." view={view} onView={setView} search={search} onSearch={setSearch} onBack={onBack} total={query.total} hideViews />
+    {query.isLoading ? <M31SkeletonList /> : <div className="space-y-2">{query.items.map((row) => <button key={row.id} type="button" onClick={() => setSelected(row)} className="min-h-20 w-full rounded-xl border border-m31-border bg-white p-4 text-left active:bg-m31-surface-warm"><span className="flex items-start gap-3">{row.bucket === 'official' ? <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" /> : <CircleAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />}<span className="min-w-0 flex-1"><strong className="block truncate text-m31-ink">{row.nome}</strong><span className="mt-1 block text-sm text-m31-text-muted">{row.whatsapp || 'WhatsApp ausente'}</span><span className="mt-2 block text-sm font-medium text-m31-ink">{row.motivo}</span></span></span></button>)}</div>}
+    {query.hasNextPage && <button type="button" onClick={() => query.fetchNextPage()} className="min-h-12 w-full rounded-xl border border-m31-border bg-white font-bold text-m31-primary">Carregar mais</button>}
+    <M31BottomSheet open={Boolean(selected)} onOpenChange={(open) => !open && setSelected(null)} title={selected?.nome}><div className="space-y-4"><p className="text-sm text-m31-text-muted">{selected?.motivo}</p><div className="grid grid-cols-4 gap-2 text-center text-xs"><span>Pago<br /><b>{selected?.bucket === 'official' ? 'Sim' : '—'}</b></span><span>Boas-vindas<br /><b>{selected?.boas_vindas ? 'Sim' : 'Não'}</b></span><span>QR<br /><b>{selected?.qr ? 'Sim' : 'Não'}</b></span><span>Grupo<br /><b>{selected?.entrou_grupo ? 'Entrou' : 'Pendente'}</b></span></div>{selected && query.data?.pages?.[0]?.pode_editar && <M31ParticipanteOperacao key={selected.id} participante={selected} sessionId={sessionId} caravanas={query.data.pages[0].caravanas || []} podeCaravana={query.data.pages[0].pode_caravana} onDone={() => { setSelected(null); query.refetch(); }} />}{vinculo && selected && <M31VinculoPagamento inscricao={selected} sessionId={sessionId} onDone={() => { setVinculo(false); setSelected(null); query.refetch(); }} onCancel={() => setVinculo(false)} />}{!vinculo && selected && !['aprovado', 'gratuito'].includes(selected.status_pagamento) && <button type="button" onClick={() => setVinculo(true)} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-m31-primary px-4 font-bold text-white"><Link2 aria-hidden="true" className="h-5 w-5" />Vincular pagamento</button>}{!vinculo && selected?.whatsapp && <a href={`https://wa.me/${selected.whatsapp}`} target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 font-bold text-white"><MessageCircle className="h-5 w-5" />Abrir WhatsApp</a>}</div></M31BottomSheet>
+  </section>;
+}

@@ -1,0 +1,127 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "m31-local",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-10-05",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": [
+      "/api/*"
+    ]
+  },
+  "observability": {
+    "enabled": true,
+    "traces": {
+      "enabled": true
+    }
+  },
+  "vars": {
+    "APP_ENV": "local",
+    "APP_ORIGIN": "http://127.0.0.1:5173",
+    "EXTERNAL_SIDE_EFFECTS": "false",
+    "AUTOMATIONS_ENABLED": "false",
+    "PROVIDER_MODE": "mock"
+  },
+  "queues": {
+    "producers": [
+      {
+        "binding": "JOBS",
+        "queue": "m31-local-jobs"
+      },
+      {
+        "binding": "JOBS_DLQ",
+        "queue": "m31-local-dlq"
+      }
+    ],
+    "consumers": [
+      {
+        "queue": "m31-local-jobs",
+        "max_batch_size": 5,
+        "max_retries": 3,
+        "dead_letter_queue": "m31-local-dlq"
+      }
+    ]
+  },
+  "triggers": {
+    "crons": [
+      "* * * * *"
+    ]
+  },
+  "env": {
+    "staging": {
+      "name": "m31-staging",
+      "vars": {
+        "APP_ENV": "staging",
+        "EXTERNAL_SIDE_EFFECTS": "false",
+        "AUTOMATIONS_ENABLED": "false",
+        "PROVIDER_MODE": "live",
+        "ASAAS_BASE_URL": "https://api-sandbox.asaas.com/v3"
+      },
+      "queues": {
+        "producers": [
+          {
+            "binding": "JOBS",
+            "queue": "m31-staging-jobs"
+          },
+          {
+            "binding": "JOBS_DLQ",
+            "queue": "m31-staging-dlq"
+          }
+        ],
+        "consumers": [
+          {
+            "queue": "m31-staging-jobs",
+            "max_batch_size": 5,
+            "max_retries": 3,
+            "dead_letter_queue": "m31-staging-dlq"
+          }
+        ]
+      },
+      "triggers": {
+        "crons": [
+          "* * * * *"
+        ]
+      }
+    },
+    "production": {
+      "name": "m31-production",
+      "vars": {
+        "APP_ENV": "production",
+        "EXTERNAL_SIDE_EFFECTS": "false",
+        "AUTOMATIONS_ENABLED": "false",
+        "PROVIDER_MODE": "live",
+        "ASAAS_BASE_URL": "https://api.asaas.com/v3"
+      },
+      "queues": {
+        "producers": [
+          {
+            "binding": "JOBS",
+            "queue": "m31-production-jobs"
+          },
+          {
+            "binding": "JOBS_DLQ",
+            "queue": "m31-production-dlq"
+          }
+        ],
+        "consumers": [
+          {
+            "queue": "m31-production-jobs",
+            "max_batch_size": 5,
+            "max_retries": 3,
+            "dead_letter_queue": "m31-production-dlq"
+          }
+        ]
+      },
+      "triggers": {
+        "crons": [
+          "* * * * *"
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,148 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ════════════════════════════════════════════════════════════
+   M31 DESIGN SYSTEM — LIGHT + BORDÔ (#8B1A2B)
+   Um único sistema. Sem dark mode. Sem arco-íris.
+   ════════════════════════════════════════════════════════════ */
+
+@layer base {
+  :root {
+    /* ── Canvas & Surfaces ── */
+    --background: 216 15% 93%;          /* #EAEDF1 — cinza mais profundo e frio: separa cards do fundo */
+    --foreground: 10 16% 14%;           /* #2A1F1F — ink */
+    --card: 0 0% 100%;                  /* #FFFFFF */
+    --card-foreground: 10 16% 14%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 10 16% 14%;
+
+    /* ── Brand — Bordô oficial #8B1A2B ── */
+    --primary: 352 64% 33%;
+    --primary-foreground: 0 0% 100%;
+
+    /* ── Secondary / Muted (neutros quentes) ── */
+    --secondary: 210 20% 98%;            /* #F9FAFB — zinc-50 */
+    --secondary-foreground: 10 16% 14%;
+    --muted: 240 5% 96%;                /* zinc-100 */
+    --muted-foreground: 0 7% 45%;       /* #6B5E5E */
+
+    /* ── Accent (bordô tint) ── */
+    --accent: 350 38% 94%;              /* #F6E9EC */
+    --accent-foreground: 352 64% 33%;
+
+    /* ── Semantic ── */
+    --destructive: 0 72% 51%;           /* #DC2626 */
+    --destructive-foreground: 0 0% 100%;
+
+    /* ── Border & Ring ── */
+    --border: 214 15% 91%;              /* #E4E7EB — zinc-200 */
+    --input: 214 15% 91%;
+    --ring: 352 64% 33%;                /* bordô */
+    --radius: 0.5rem;                   /* 8px base */
+
+    /* ── Charts ── */
+    --chart-1: 352 64% 33%;             /* bordô */
+    --chart-2: 142 71% 45%;             /* verde */
+    --chart-3: 32 92% 44%;              /* âmbar */
+    --chart-4: 0 72% 51%;               /* vermelho */
+    --chart-5: 200 65% 50%;             /* azul (dado, não UI) */
+
+    /* ── Sidebar ── */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 0 7% 45%;
+    --sidebar-primary: 352 64% 33%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 350 38% 94%;
+    --sidebar-accent-foreground: 352 64% 33%;
+    --sidebar-border: 214 15% 91%;
+    --sidebar-ring: 352 64% 33%;
+  }
+
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    color: hsl(var(--foreground));
+    background: hsl(var(--background));
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* ── Scrollbar (neutro quente) ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: hsl(33 23% 80%); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: hsl(33 23% 70%); }
+
+  /* ── Inputs (light, warm) ── */
+  input,
+  select,
+  textarea {
+    background-color: #FFFFFF;
+    border-color: hsl(var(--border));
+    color: hsl(var(--foreground));
+  }
+  input::placeholder,
+  textarea::placeholder { color: hsl(var(--muted-foreground)); }
+  option { background: #FFFFFF; color: hsl(var(--foreground)); }
+
+  /* ── Aliases de fonte (jakarta → Inter) ── */
+  .font-jakarta { font-family: 'Inter', system-ui, sans-serif; }
+  .font-inter   { font-family: 'Inter', system-ui, sans-serif; }
+}
+
+/* ════════════════════════════════════════════════════════════
+   ESCALA TIPOGRÁFICA — única, obrigatória
+   Pesos: 400/500/600/700. Tamanhos: 11–40 sem meio-pixel.
+   ════════════════════════════════════════════════════════════ */
+@layer utilities {
+  /* ── Scrollbar oculta (scroll horizontal nativo em filtros/chips) ── */
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-none::-webkit-scrollbar { display: none; }
+
+  .text-display { font-size: 40px; line-height: 48px; font-weight: 700; }
+  .text-h1      { font-size: 24px; line-height: 30px; font-weight: 600; }
+  .text-h2      { font-size: 18px; line-height: 24px; font-weight: 600; }
+  .text-title   { font-size: 15px; line-height: 22px; font-weight: 600; }
+  .text-body    { font-size: 14px; line-height: 20px; font-weight: 400; }
+  .text-sm      { font-size: 13px; line-height: 18px; font-weight: 400; }
+  .text-caption { font-size: 12px; line-height: 16px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.12em; }
+  .text-micro   { font-size: 11px; line-height: 14px; font-weight: 600; }
+}
+
+/* ════════════════════════════════════════════════════════════
+   GRADIENTES — só marca + 3 semânticos
+   ════════════════════════════════════════════════════════════ */
+:root {
+  --grad-brand:   linear-gradient(135deg, #8B1A2B 0%, #6B1422 100%);
+  --grad-success: linear-gradient(135deg, #16A34A 0%, #059669 100%);
+  --grad-warning: linear-gradient(135deg, #D97706 0%, #B45309 100%);
+  --grad-danger:  linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);
+}
+
+/* ════════════════════════════════════════════════════════════
+   RAW TOKENS — para migração de inline styles → classes
+   ════════════════════════════════════════════════════════════ */
+:root {
+  --m31-bordo:        #8B1A2B;
+  --m31-bordo-dark:   #6B1422;
+  --m31-bordo-tint:   #F6E9EC;
+  --m31-canvas:       #FAF7F2;
+  --m31-surface:      #FFFFFF;
+  --m31-surface-warm: #F6EEE6;
+  --m31-ink:          #2A1F1F;
+  --m31-text-muted:   #6B5E5E;
+  --m31-line:         #E5DDD5;
+  --m31-success:      #16A34A;
+  --m31-warning:      #D97706;
+  --m31-danger:       #DC2626;
+}

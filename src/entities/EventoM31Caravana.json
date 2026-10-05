@@ -1,0 +1,67 @@
+{
+  "name": "EventoM31Caravana",
+  "type": "object",
+  "properties": {
+    "nome": {
+      "type": "string",
+      "description": "Nome da caravana"
+    },
+    "slug": {
+      "type": "string",
+      "description": "Identificador único para URL (ex: garanhuns, caruaru). Sem espaços, em minúsculas"
+    },
+    "lider_nome": {
+      "type": "string",
+      "description": "Nome completo da líder"
+    },
+    "lider_whatsapp": {
+      "type": "string",
+      "description": "WhatsApp da líder (para notificações)"
+    },
+    "cidade_origem": {
+      "type": "string",
+      "description": "Cidade de origem da caravana"
+    },
+    "total_inscritos": {
+      "type": "number",
+      "default": 0,
+      "description": "Total de inscritos pela caravana"
+    },
+    "total_confirmados": {
+      "type": "number",
+      "default": 0,
+      "description": "Total de confirmados (pagamento aprovado)"
+    },
+    "total_pendentes": {
+      "type": "number",
+      "default": 0,
+      "description": "Total de pendentes (aguardando pagamento)"
+    },
+    "taxa_conversao": {
+      "type": "number",
+      "default": 0,
+      "description": "Taxa de conversão em percentual"
+    },
+    "receita_gerada": {
+      "type": "number",
+      "default": 0,
+      "description": "Receita total gerada"
+    },
+    "abandonos_checkout": {
+      "type": "number",
+      "default": 0,
+      "description": "Quantidade de abandonos de checkout"
+    },
+    "ativa": {
+      "type": "boolean",
+      "default": true,
+      "description": "Se a caravana está ativa"
+    }
+  },
+  "required": [
+    "nome",
+    "slug",
+    "lider_nome",
+    "lider_whatsapp"
+  ]
+}

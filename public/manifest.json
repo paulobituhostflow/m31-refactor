@@ -1,0 +1,15 @@
+{
+  "name": "M31 Filhas",
+  "short_name": "M31",
+  "start_url": "/m31",
+  "display": "standalone",
+  "background_color": "#F6F7FB",
+  "theme_color": "#4e111b",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

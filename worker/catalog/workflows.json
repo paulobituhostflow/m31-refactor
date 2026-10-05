@@ -1,0 +1,1412 @@
+[
+  {
+    "name": "M31 Calcular Prioridade — 08:30",
+    "description": "Recalcula prioridade e next_contact_at de todos os leads pendentes às 08:30 diariamente",
+    "trigger": {
+      "condition": null,
+      "config": {
+        "trigger_type": "scheduled",
+        "events": [],
+        "schedule_mode": "recurring",
+        "cron_expression": "30 11 * * *",
+        "one_time_date": null,
+        "timezone": "UTC",
+        "interval_value": null,
+        "interval_unit": null,
+        "interval_anchor": null,
+        "ends_type": "never",
+        "ends_on_date": null,
+        "ends_after_count": null
+      }
+    },
+    "definition": {
+      "document": {
+        "dsl": "1.0.0",
+        "name": "m31_calcular_prioridade_08_30",
+        "version": "1.0",
+        "namespace": "base44"
+      },
+      "do": [
+        {
+          "run_function": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "m31CalcularPrioridade",
+              "args": {}
+            },
+            "then": "end"
+          }
+        }
+      ]
+    },
+    "x-base44-migrated-from-automation": {
+      "legacy_payload_function": "m31CalcularPrioridade"
+    }
+  },
+  {
+    "name": "Notificar Mudança de Status da Tarefa",
+    "description": "",
+    "trigger": {
+      "condition": "${ ((.trigger.changed_fields | index(\"status\") != null) and (.trigger.data.responsavel_email != null)) }",
+      "config": {
+        "trigger_type": "entity",
+        "events": [
+          "update"
+        ],
+        "entity_name": "EventoM31Tarefa"
+      }
+    },
+    "definition": {
+      "document": {
+        "dsl": "1.0.0",
+        "name": "notificar_mudan_a_de_status_da_tarefa",
+        "version": "1.0",
+        "namespace": "base44"
+      },
+      "do": [
+        {
+          "run_function": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "m31NotificarStatusTarefa",
+              "args": {}
+            },
+            "then": "end"
+          }
+        }
+      ]
+    },
+    "x-base44-migrated-from-automation": {
+      "legacy_payload_function": "m31NotificarStatusTarefa"
+    }
+  },
+  {
+    "definition": {
+      "document": {
+        "dsl": "1.0.0",
+        "name": "m31_regua_followup_grupo",
+        "version": "1.0",
+        "namespace": "base44"
+      },
+      "do": [
+        {
+          "classificar_e_enfileirar": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "m31ReguaFollowupGrupo",
+              "args": {
+                "action": "executar"
+              }
+            },
+            "then": "end",
+            "x-base44": {
+              "title": "Régua de follow-up do grupo",
+              "description": "Classifica confirmadas e enfileira etapas elegíveis"
+            }
+          }
+        }
+      ]
+    },
+    "trigger": {
+      "condition": null,
+      "config": {
+        "trigger_type": "scheduled",
+        "events": [],
+        "schedule_mode": "recurring",
+        "cron_expression": "0 9 * * *",
+        "one_time_date": null,
+        "timezone": "America/Recife",
+        "interval_value": null,
+        "interval_unit": null,
+        "interval_anchor": null,
+        "ends_type": "never",
+        "ends_on_date": null,
+        "ends_after_count": null
+      }
+    },
+    "name": "M31 — Régua Follow-up Grupo (09h)",
+    "description": "Diariamente às 09h: reconstrói o histórico real de comunicação das inscritas confirmadas (fila com aceite, logs enviados, snapshot do grupo e campos da inscrição), classifica quem precisa de QR/lembrete, Follow-up 1 ou Follow-up 2 e enfileira automaticamente os elegíveis (envio via drenador global)."
+  },
+  {
+    "name": "M31 — Despachar Confirmações (aprovado sem boas-vindas)",
+    "description": "Dispara m31DespacharConfirmacoes sempre que uma inscrição é marcada como aprovada e ainda não teve boas-vindas enviadas.",
+    "trigger": {
+      "condition": "${ ((.trigger.changed_fields | index(\"liberada_para_envio\") != null) and (.trigger.data.liberada_para_envio == true) and (.trigger.data.status_pagamento == \"aprovado\") and (.trigger.data.data_envio_boas_vindas == null)) }",
+      "config": {
+        "trigger_type": "entity",
+        "events": [
+          "update"
+        ],
+        "entity_name": "EventoM31Inscricao"
+      }
+    },
+    "definition": {
+      "document": {
+        "dsl": "1.0.0",
+        "name": "m31_despachar_confirma_es_aprovado_sem_boas_vindas",
+        "version": "1.0",
+        "namespace": "base44"
+      },
+      "do": [
+        {
+          "run_function": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "m31DespacharConfirmacoes",
+              "args": {}
+            },
+            "then": "end"
+          }
+        }
+      ]
+    },
+    "x-base44-migrated-from-automation": {
+      "legacy_payload_function": "m31DespacharConfirmacoes"
+    }
+  },
+  {
+    "name": "M31 — Boas-vindas Automáticas (30min)",
+    "description": "REGRA 2/3/4: Safety Net — a cada 5min busca TODAS as inscrições aprovadas sem boas-vindas (independente de idade). MAX adaptativo (1/5/10/20 conforme backlog). FIFO por created_date ASC. Sem dependência cronológica. Janela 08h-20h.",
+    "trigger": {
+      "condition": null,
+      "config": {
+        "trigger_type": "scheduled",
+        "events": [],
+        "schedule_mode": "interval",
+        "cron_expression": null,
+        "one_time_date": null,
+        "timezone": "UTC",
+        "interval_value": 5,
+        "interval_unit": "minutes",
+        "interval_anchor": "2026-05-10T11:11:10.938000",
+        "ends_type": "never",
+        "ends_on_date": null,
+        "ends_after_count": null
+      }
+    },
+    "definition": {
+      "document": {
+        "dsl": "1.0.0",
+        "name": "m31_boas_vindas_autom_ticas_30min",
+        "version": "1.0",
+        "namespace": "base44"
+      },
+      "do": [
+        {
+          "run_function": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "m31EnviarBoasVindas",
+              "args": {}
+            },
+            "then": "end"
+          }
+        }
+      ]
+    },
+    "x-base44-migrated-from-automation": {
+      "legacy_payload_function": "m31EnviarBoasVindas"
+    }
+  },
+  {
+    "name": "Monitor Erros Formulário M31 → Alertar Paulo",
+    "description": "",
+    "trigger": {
+      "condition": "${ ((.trigger.data.tipo_erro | index(\"field_required\") != null) and (.trigger.data.origem == \"formulario\")) }",
+      "config": {
+        "trigger_type": "entity",
+        "events": [
+          "create"
+        ],
+        "entity_name": "M31AuditLog"
+      }
+    },
+    "definition": {
+      "document": {
+        "dsl": "1.0.0",
+        "name": "monitor_erros_formul_rio_m31_alertar_paulo",
+        "version": "1.0",
+        "namespace": "base44"
+      },
+      "do": [
+        {
+          "run_function": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "m31AlertarGestor",
+              "args": {
+                "tipo_erro": "monitoramento_automático",
+                "gravidade": "critico",
+                "origem": "automacao",
+                "descricao": "Erro de campo obrigatório detectado no formulário"
+              }
+            },
+            "then": "end"
+          }
+        }
+      ]
+    },
+    "x-base44-migrated-from-automation": {
+      "legacy_payload_function": "m31AlertarGestor"
+    }
+  },
+  {
+    "name": "Recuperação Checkout Ester — a cada 15min",
+    "description": "Busca inscrições com checkout_pendente/abandonado há mais de 3h e envia mensagem humanizada da Ester via UAZAPI. Máx 3 por lote, delay 2–5min, janela 08h–21h BRT.",
+    "trigger": {
+      "condition": null,
+      "config": {
+        "trigger_type": "scheduled",
+        "events": [],
+        "schedule_mode": "interval",
+        "cron_expression": null,
+        "one_time_date": null,
+        "timezone": "UTC",
+        "interval_value": 15,
+        "interval_unit": "minutes",
+        "interval_anchor": "2026-05-13T14:26:44.212000",
+        "ends_type": "never",
+        "ends_on_date": null,
+        "ends_after_count": null
+      }
+    },
+    "definition": {
+      "document": {
+        "dsl": "1.0.0",
+        "name": "recupera_o_checkout_ester_a_cada_15min",
+        "version": "1.0",
+        "namespace": "base44"
+      },
+      "do": [
+        {
+          "run_function": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "m31RecuperarCheckout",
+              "args": {}
+            },
+            "then": "end"
+          }
+        }
+      ]
+    },
+    "x-base44-migrated-from-automation": {
+      "legacy_payload_function": "m31RecuperarCheckout"
+    }
+  },
+  {
+    "name": "M31 — Reconciliação ASAAS (webhooks perdidos)",
+    "description": "Reconcilia pagamentos ASAAS não processados pelo webhook (checkout abandonado/pendente que foram pagos) e garante envio de QR + boas-vindas. Roda a cada 2h.",
+    "trigger": {
+      "condition": null,
+      "config": {
+        "trigger_type": "scheduled",
+        "events": [],
+        "schedule_mode": "interval",
+        "cron_expression": null,
+        "one_time_date": null,
+        "timezone": "UTC",
+        "interval_value": 2,
+        "interval_unit": "hours",
+        "interval_anchor": "2026-07-24T01:32:09.276000",
+        "ends_type": "never",
+        "ends_on_date": null,
+        "ends_after_count": null
+      }
+    },
+    "definition": {
+      "document": {
+        "dsl": "1.0.0",
+        "name": "m31_reconcilia_o_asaas_webhooks_perdidos",
+        "version": "1.0",
+        "namespace": "base44"
+      },
+      "do": [
+        {
+          "run_function": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "m31ReconciliarAsaas",
+              "args": {}
+            },
+            "then": "end"
+          }
+        }
+      ]
+    },
+    "x-base44-migrated-from-automation": {
+      "legacy_payload_function": "m31ReconciliarAsaas"
+    }
+  },
+  {
+    "name": "Atribuir Nº Operacional Interno",
+    "description": "Atribui o próximo número operacional interno (#NNN) somente quando a inscrição está CONFIRMADA (aprovado/gratuito) — no create já confirmado ou quando o status vira confirmado. Nunca numera leads, pendentes ou abandonadas. Somente numeração — não envia mensagens.",
+    "trigger": {
+      "condition": "${ (.trigger.data.status_pagamento == \"aprovado\" or .trigger.data.status_pagamento == \"gratuito\") }",
+      "config": {
+        "trigger_type": "entity",
+        "events": [
+          "create",
+          "update"
+        ],
+        "entity_name": "EventoM31Inscricao"
+      }
+    },
+    "definition": {
+      "document": {
+        "dsl": "1.0.0",
+        "name": "atribuir_n_operacional_interno",
+        "version": "1.0",
+        "namespace": "base44"
+      },
+      "do": [
+        {
+          "run_function": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "m31AtribuirOrdemOperacional",
+              "args": {}
+            },
+            "then": "end"
+          }
+        }
+      ]
+    },
+    "x-base44-migrated-from-automation": {
+      "legacy_payload_function": "m31AtribuirOrdemOperacional"
+    }
+  },
+  {
+    "name": "Fila Confirmações Pagas — Liberador",
+    "description": "Liberador de fila (NÃO envia, NÃO invoca despachador). Ciclo 5 min (mínimo da plataforma; o pedido era 2 min). Seleciona no máx 1 inscrição aprovada, pós-corte, WhatsApp válido, não concluída, e promove liberada_para_envio false→true (updateMany condicional). Gotejamento 45-120s via liberada_para_envio_em; teto 20/hora (ciclo de 5min já mantém abaixo); janela 08h-20h Recife; respeita pausa global. A promoção aciona a automação de entidade que passa o inscricao_id ao m31DespacharConfirmacoes. CRIADA INATIVA — ativar só na janela de go-live.",
+    "trigger": {
+      "condition": null,
+      "config": {
+        "trigger_type": "scheduled",
+        "events": [],
+        "schedule_mode": "interval",
+        "cron_expression": null,
+        "one_time_date": null,
+        "timezone": "UTC",
+        "interval_value": 5,
+        "interval_unit": "minutes",
+        "interval_anchor": "2026-07-13T12:04:55.005000",
+        "ends_type": "never",
+        "ends_on_date": null,
+        "ends_after_count": null
+      }
+    },
+    "definition": {
+      "document": {
+        "dsl": "1.0.0",
+        "name": "fila_confirma_es_pagas_liberador",
+        "version": "1.0",
+        "namespace": "base44"
+      },
+      "do": [
+        {
+          "run_function": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "m31LiberadorFilaConfirmacoes",
+              "args": {}
+            },
+            "then": "end"
+          }
+        }
+      ]
+    },
+    "x-base44-migrated-from-automation": {
+      "legacy_payload_function": "m31LiberadorFilaConfirmacoes"
+    }
+  },
+  {
+    "name": "M31 - Recuperar Leads Abandonados",
+    "description": "Roda a cada 15 minutos para detectar checkouts abandonados e enviar mensagens automáticas de recuperação via WhatsApp",
+    "trigger": {
+      "condition": null,
+      "config": {
+        "trigger_type": "scheduled",
+        "events": [],
+        "schedule_mode": "interval",
+        "cron_expression": null,
+        "one_time_date": null,
+        "timezone": "UTC",
+        "interval_value": 15,
+        "interval_unit": "minutes",
+        "interval_anchor": "2026-04-08T01:45:37.709000",
+        "ends_type": "never",
+        "ends_on_date": null,
+        "ends_after_count": null
+      }
+    },
+    "definition": {
+      "document": {
+        "dsl": "1.0.0",
+        "name": "m31_recuperar_leads_abandonados",
+        "version": "1.0",
+        "namespace": "base44"
+      },
+      "do": [
+        {
+          "run_function": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "m31RecuperarLeads",
+              "args": {}
+            },
+            "then": "end"
+          }
+        }
+      ]
+    },
+    "x-base44-migrated-from-automation": {
+      "legacy_payload_function": "m31RecuperarLeads"
+    }
+  },
+  {
+    "name": "Suporte M31 — Processar atendimento (modo observador)",
+    "description": "Ao registrar uma mensagem recebida no WhatsApp de suporte, gera o rascunho via IA e envia para aprovação de Paulo. Comandos de Paulo (APROVAR/EDITAR/REJEITAR/etc) também passam por aqui.",
+    "trigger": {
+      "condition": "${ (.trigger.data.status_processamento == \"novo\") }",
+      "config": {
+        "trigger_type": "entity",
+        "events": [
+          "create"
+        ],
+        "entity_name": "M31Atendimento"
+      }
+    },
+    "definition": {
+      "document": {
+        "dsl": "1.0.0",
+        "name": "suporte_m31_processar_atendimento_modo_observador",
+        "version": "1.0",
+        "namespace": "base44"
+      },
+      "do": [
+        {
+          "run_function": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "m31SuporteObservador",
+              "args": {}
+            },
+            "then": "end"
+          }
+        }
+      ]
+    },
+    "x-base44-migrated-from-automation": {
+      "legacy_payload_function": "m31SuporteObservador"
+    }
+  },
+  {
+    "name": "Snapshot Grupo Inscritas (2h)",
+    "description": "Extrai participantes do grupo INSCRITAS M31 FILHAS via UAZAPI a cada 2 horas. Sincroniza M31GrupoMembro, aplica tags de entrada/saída no CRM (EventoM31Inscricao), envia boas-vindas no privado para novas entradas e cria incidentes de resgate para saídas.",
+    "trigger": {
+      "condition": null,
+      "config": {
+        "trigger_type": "scheduled",
+        "events": [],
+        "schedule_mode": "interval",
+        "cron_expression": null,
+        "one_time_date": null,
+        "timezone": "UTC",
+        "interval_value": 2,
+        "interval_unit": "hours",
+        "interval_anchor": "2026-07-07T19:48:15.166000",
+        "ends_type": "never",
+        "ends_on_date": null,
+        "ends_after_count": null
+      }
+    },
+    "definition": {
+      "document": {
+        "dsl": "1.0.0",
+        "name": "snapshot_grupo_inscritas_2h",
+        "version": "1.0",
+        "namespace": "base44"
+      },
+      "do": [
+        {
+          "run_function": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "m31ExtrairGrupoInscritadas",
+              "args": {}
+            },
+            "then": "end"
+          }
+        }
+      ]
+    },
+    "x-base44-migrated-from-automation": {
+      "legacy_payload_function": "m31ExtrairGrupoInscritadas"
+    }
+  },
+  {
+    "name": "Fila Global de Mensagens — Drenador (m31DrenarFila)",
+    "description": "ÚNICO sender UAZAPI. Acorda a cada 5 minutos na janela 08–20h Recife; o próprio m31DrenarFila mantém single-flight, teto global e delay humanizado de 60–120s entre chamadas. Classes transacional/follow-up/comercial avançam intercaladas sem starvation.",
+    "definition": {
+      "document": {
+        "dsl": "1.0.0",
+        "name": "fila_global_de_mensagens_drenador_m31drenarfila",
+        "version": "1.0",
+        "namespace": "base44"
+      },
+      "do": [
+        {
+          "run_function": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "m31DrenarFila",
+              "args": {}
+            },
+            "then": "end"
+          }
+        }
+      ]
+    },
+    "trigger": {
+      "condition": null,
+      "config": {
+        "trigger_type": "scheduled",
+        "events": [],
+        "schedule_mode": "recurring",
+        "cron_expression": "*/5 11-23 * * *",
+        "one_time_date": null,
+        "timezone": "UTC",
+        "interval_value": null,
+        "interval_unit": null,
+        "interval_anchor": null,
+        "ends_type": "never",
+        "ends_on_date": null,
+        "ends_after_count": null
+      }
+    },
+    "x-base44-migrated-from-automation": {
+      "legacy_payload_function": "m31DrenarFila"
+    }
+  },
+  {
+    "name": "M31 Régua — Disparo 09:00",
+    "description": "Dispara mensagens de recuperação para leads pendentes às 09:00 (UTC-3), segunda a sábado",
+    "trigger": {
+      "condition": null,
+      "config": {
+        "trigger_type": "scheduled",
+        "events": [],
+        "schedule_mode": "recurring",
+        "cron_expression": "0 12 * * 1-6",
+        "one_time_date": null,
+        "timezone": "UTC",
+        "interval_value": null,
+        "interval_unit": null,
+        "interval_anchor": null,
+        "ends_type": "never",
+        "ends_on_date": null,
+        "ends_after_count": null
+      }
+    },
+    "definition": {
+      "document": {
+        "dsl": "1.0.0",
+        "name": "m31_r_gua_disparo_09_00",
+        "version": "1.0",
+        "namespace": "base44"
+      },
+      "do": [
+        {
+          "run_function": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "m31ReguaAutomatica",
+              "args": {}
+            },
+            "then": "end"
+          }
+        }
+      ]
+    },
+    "x-base44-migrated-from-automation": {
+      "legacy_payload_function": "m31ReguaAutomatica"
+    }
+  },
+  {
+    "name": "Auditor Automático M31 (1h)",
+    "description": "REGRA 5/7/10: Rotina horária que audita todas as etapas críticas. Detecta gaps (aprovado sem boas-vindas >30min, QR pendente, grupo pendente), backlog crítico, DLQ acumulando. Gera incidentes em M31OperacaoIncidente e envia alerta WhatsApp para o gestor quando crítico.",
+    "trigger": {
+      "condition": null,
+      "config": {
+        "trigger_type": "scheduled",
+        "events": [],
+        "schedule_mode": "interval",
+        "cron_expression": null,
+        "one_time_date": null,
+        "timezone": "UTC",
+        "interval_value": 1,
+        "interval_unit": "hours",
+        "interval_anchor": "2026-07-07T13:00:18.620000",
+        "ends_type": "never",
+        "ends_on_date": null,
+        "ends_after_count": null
+      }
+    },
+    "definition": {
+      "document": {
+        "dsl": "1.0.0",
+        "name": "auditor_autom_tico_m31_1h",
+        "version": "1.0",
+        "namespace": "base44"
+      },
+      "do": [
+        {
+          "run_function": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "m31AuditorAutomatico",
+              "args": {}
+            },
+            "then": "end"
+          }
+        }
+      ]
+    },
+    "x-base44-migrated-from-automation": {
+      "legacy_payload_function": "m31AuditorAutomatico"
+    }
+  },
+  {
+    "name": "Lembretes Diários de Tarefas (09:00)",
+    "description": "",
+    "trigger": {
+      "condition": null,
+      "config": {
+        "trigger_type": "scheduled",
+        "events": [],
+        "schedule_mode": "recurring",
+        "cron_expression": "0 12 * * *",
+        "one_time_date": null,
+        "timezone": "UTC",
+        "interval_value": null,
+        "interval_unit": null,
+        "interval_anchor": null,
+        "ends_type": "never",
+        "ends_on_date": null,
+        "ends_after_count": null
+      }
+    },
+    "definition": {
+      "document": {
+        "dsl": "1.0.0",
+        "name": "lembretes_di_rios_de_tarefas_09_00",
+        "version": "1.0",
+        "namespace": "base44"
+      },
+      "do": [
+        {
+          "run_function": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "m31EnviarLembreteTarefas",
+              "args": {}
+            },
+            "then": "end"
+          }
+        }
+      ]
+    },
+    "x-base44-migrated-from-automation": {
+      "legacy_payload_function": "m31EnviarLembreteTarefas"
+    }
+  },
+  {
+    "name": "Reconciliação Asaas — Safety Net",
+    "description": "A cada 2h busca pagamentos confirmados no Asaas e sincroniza inscrições que o webhook não capturou.",
+    "trigger": {
+      "condition": null,
+      "config": {
+        "trigger_type": "scheduled",
+        "events": [],
+        "schedule_mode": "interval",
+        "cron_expression": null,
+        "one_time_date": null,
+        "timezone": "UTC",
+        "interval_value": 2,
+        "interval_unit": "hours",
+        "interval_anchor": "2026-07-02T22:31:10.224000",
+        "ends_type": "never",
+        "ends_on_date": null,
+        "ends_after_count": null
+      }
+    },
+    "definition": {
+      "document": {
+        "dsl": "1.0.0",
+        "name": "reconcilia_o_asaas_safety_net",
+        "version": "1.0",
+        "namespace": "base44"
+      },
+      "do": [
+        {
+          "run_function": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "m31ReconciliarAsaas",
+              "args": {}
+            },
+            "then": "end"
+          }
+        }
+      ]
+    },
+    "x-base44-migrated-from-automation": {
+      "legacy_payload_function": "m31ReconciliarAsaas"
+    }
+  },
+  {
+    "name": "Disparo Lote 1 - 10 em 10 a cada 15min",
+    "description": "",
+    "trigger": {
+      "condition": null,
+      "config": {
+        "trigger_type": "scheduled",
+        "events": [],
+        "schedule_mode": "interval",
+        "cron_expression": null,
+        "one_time_date": null,
+        "timezone": "UTC",
+        "interval_value": 15,
+        "interval_unit": "minutes",
+        "interval_anchor": "2026-05-07T22:56:19.793000",
+        "ends_type": "after_count",
+        "ends_on_date": null,
+        "ends_after_count": 13
+      }
+    },
+    "definition": {
+      "document": {
+        "dsl": "1.0.0",
+        "name": "disparo_lote_1_10_em_10_a_cada_15min",
+        "version": "1.0",
+        "namespace": "base44"
+      },
+      "do": [
+        {
+          "run_function": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "m31GerarCobrancasLote1",
+              "args": {}
+            },
+            "then": "end"
+          }
+        }
+      ]
+    },
+    "x-base44-migrated-from-automation": {
+      "legacy_payload_function": "m31GerarCobrancasLote1"
+    }
+  },
+  {
+    "definition": {
+      "document": {
+        "dsl": "1.0.0",
+        "name": "cartinhas_espelho_privado",
+        "version": "1.0",
+        "namespace": "base44"
+      },
+      "do": [
+        {
+          "espelhar": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "m31CartinhasEspelho",
+              "args": {
+                "action": "processar"
+              }
+            },
+            "then": "end",
+            "x-base44": {
+              "title": "Espelhar cartinhas na planilha",
+              "description": "Histórico privado de auditoria"
+            }
+          }
+        }
+      ]
+    },
+    "description": "Espelha os eventos de salvamento/transferência das cartinhas na planilha privada de auditoria (Google Sheets), fora do caminho do autosave. O Base44 permanece a única autoridade; a planilha é apenas histórico para auditoria e recuperação, e nada volta dela para as cartas. Falha no Google nunca impede o salvamento.",
+    "trigger": {
+      "condition": null,
+      "config": {
+        "trigger_type": "scheduled",
+        "events": [],
+        "schedule_mode": "recurring",
+        "cron_expression": "*/30 * * * *",
+        "one_time_date": null,
+        "timezone": "America/Recife",
+        "interval_value": null,
+        "interval_unit": null,
+        "interval_anchor": null,
+        "ends_type": "never",
+        "ends_on_date": null,
+        "ends_after_count": null
+      }
+    },
+    "name": "Cartinhas — Espelho Privado (30min)"
+  },
+  {
+    "name": "Notificar Novo Comentário em Tarefa",
+    "description": "",
+    "trigger": {
+      "condition": null,
+      "config": {
+        "trigger_type": "entity",
+        "events": [
+          "create"
+        ],
+        "entity_name": "TarefaComentario"
+      }
+    },
+    "definition": {
+      "document": {
+        "dsl": "1.0.0",
+        "name": "notificar_novo_coment_rio_em_tarefa",
+        "version": "1.0",
+        "namespace": "base44"
+      },
+      "do": [
+        {
+          "run_function": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "m31NotificarComentarioTarefa",
+              "args": {}
+            },
+            "then": "end"
+          }
+        }
+      ]
+    },
+    "x-base44-migrated-from-automation": {
+      "legacy_payload_function": "m31NotificarComentarioTarefa"
+    }
+  },
+  {
+    "name": "M31 — Régua Segura — 16h",
+    "description": "Segundo disparo diário de cobrança. Anti-bloqueio ativo.",
+    "trigger": {
+      "condition": null,
+      "config": {
+        "trigger_type": "scheduled",
+        "events": [],
+        "schedule_mode": "recurring",
+        "cron_expression": "0 19 * * 1-6",
+        "one_time_date": null,
+        "timezone": "UTC",
+        "interval_value": null,
+        "interval_unit": null,
+        "interval_anchor": null,
+        "ends_type": "never",
+        "ends_on_date": null,
+        "ends_after_count": null
+      }
+    },
+    "definition": {
+      "document": {
+        "dsl": "1.0.0",
+        "name": "m31_r_gua_segura_16h",
+        "version": "1.0",
+        "namespace": "base44"
+      },
+      "do": [
+        {
+          "run_function": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "m31ReguaSegura",
+              "args": {}
+            },
+            "then": "end"
+          }
+        }
+      ]
+    },
+    "x-base44-migrated-from-automation": {
+      "legacy_payload_function": "m31ReguaSegura"
+    }
+  },
+  {
+    "name": "Notificar Atribuição de Tarefa",
+    "description": "",
+    "trigger": {
+      "condition": "${ (.trigger.data.responsavel_email != null) }",
+      "config": {
+        "trigger_type": "entity",
+        "events": [
+          "create"
+        ],
+        "entity_name": "EventoM31Tarefa"
+      }
+    },
+    "definition": {
+      "document": {
+        "dsl": "1.0.0",
+        "name": "notificar_atribui_o_de_tarefa",
+        "version": "1.0",
+        "namespace": "base44"
+      },
+      "do": [
+        {
+          "run_function": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "m31NotificarAtribuicaoTarefa",
+              "args": {}
+            },
+            "then": "end"
+          }
+        }
+      ]
+    },
+    "x-base44-migrated-from-automation": {
+      "legacy_payload_function": "m31NotificarAtribuicaoTarefa"
+    }
+  },
+  {
+    "description": "Processa eventos Asaas recebidos pelo webhook (M31AsaasWebhookEvento status=recebido). Worker decoupled do receptor thin — claim atômico, idempotência, atualiza inscrição + enfileira mensagens via governança.",
+    "definition": {
+      "document": {
+        "dsl": "1.0.0",
+        "name": "m31_worker_webhook_asaas_processa_eventos_recebidos",
+        "version": "1.0",
+        "namespace": "base44"
+      },
+      "do": [
+        {
+          "run_function": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "m31ProcessarWebhookAsaas",
+              "args": {}
+            },
+            "then": "end"
+          }
+        }
+      ]
+    },
+    "name": "M31 — Worker Webhook Asaas (processa eventos recebidos)",
+    "trigger": {
+      "condition": null,
+      "config": {
+        "trigger_type": "scheduled",
+        "events": [],
+        "schedule_mode": "interval",
+        "cron_expression": null,
+        "one_time_date": null,
+        "timezone": "UTC",
+        "interval_value": 60,
+        "interval_unit": "minutes",
+        "interval_anchor": "2026-07-28T18:05:31.428000",
+        "ends_type": "never",
+        "ends_on_date": null,
+        "ends_after_count": null
+      }
+    },
+    "x-base44-migrated-from-automation": {
+      "legacy_payload_function": "m31ProcessarWebhookAsaas"
+    }
+  },
+  {
+    "name": "Reverter Excecao 2 Lote",
+    "description": "Reverte valor_pago para o lote ativo (R$139) quando a exceção de 2º lote expira sem pagamento.",
+    "trigger": {
+      "condition": null,
+      "config": {
+        "trigger_type": "scheduled",
+        "events": [],
+        "schedule_mode": "interval",
+        "cron_expression": null,
+        "one_time_date": null,
+        "timezone": "UTC",
+        "interval_value": 30,
+        "interval_unit": "minutes",
+        "interval_anchor": "2026-08-04T02:54:52.924000",
+        "ends_type": "never",
+        "ends_on_date": null,
+        "ends_after_count": null
+      }
+    },
+    "definition": {
+      "document": {
+        "dsl": "1.0.0",
+        "name": "reverter_excecao_2_lote",
+        "version": "1.0",
+        "namespace": "base44"
+      },
+      "do": [
+        {
+          "run_function": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "m31ReverterExcecao2Lote",
+              "args": {}
+            },
+            "then": "end"
+          }
+        }
+      ]
+    },
+    "x-base44-migrated-from-automation": {
+      "legacy_payload_function": "m31ReverterExcecao2Lote"
+    }
+  },
+  {
+    "name": "Fila Recuperação Comercial — Checkouts",
+    "description": "Recuperação comercial, 1 pessoa por execução, via m31SendWhatsApp (mesma família). Ciclo 5 min (dentro da faixa 3-5 min pedida). Ordem: últimos 5 dias → 6-15 → 16-30, do mais recente ao mais antigo. Releitura de status antes do envio; exclui pagos, testes, duplicados, cancelados, telefone inválido, gift incompleto; nunca repete (recovery_attempts>0 ou log prévio); teto 10/hora. Respeita pausa global. CRIADA INATIVA — ativar só na janela de go-live.",
+    "trigger": {
+      "condition": null,
+      "config": {
+        "trigger_type": "scheduled",
+        "events": [],
+        "schedule_mode": "interval",
+        "cron_expression": null,
+        "one_time_date": null,
+        "timezone": "UTC",
+        "interval_value": 5,
+        "interval_unit": "minutes",
+        "interval_anchor": "2026-07-13T12:06:36.218000",
+        "ends_type": "never",
+        "ends_on_date": null,
+        "ends_after_count": null
+      }
+    },
+    "definition": {
+      "document": {
+        "dsl": "1.0.0",
+        "name": "fila_recupera_o_comercial_checkouts",
+        "version": "1.0",
+        "namespace": "base44"
+      },
+      "do": [
+        {
+          "run_function": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "m31RecuperarPendentes15Dias",
+              "args": {}
+            },
+            "then": "end"
+          }
+        }
+      ]
+    },
+    "x-base44-migrated-from-automation": {
+      "legacy_payload_function": "m31RecuperarPendentes15Dias"
+    }
+  },
+  {
+    "name": "M31 Régua — Disparo 18:00",
+    "description": "Segundo disparo diário às 18:00 (UTC-3), segunda a sábado",
+    "trigger": {
+      "condition": null,
+      "config": {
+        "trigger_type": "scheduled",
+        "events": [],
+        "schedule_mode": "recurring",
+        "cron_expression": "0 21 * * 1-6",
+        "one_time_date": null,
+        "timezone": "UTC",
+        "interval_value": null,
+        "interval_unit": null,
+        "interval_anchor": null,
+        "ends_type": "never",
+        "ends_on_date": null,
+        "ends_after_count": null
+      }
+    },
+    "definition": {
+      "document": {
+        "dsl": "1.0.0",
+        "name": "m31_r_gua_disparo_18_00",
+        "version": "1.0",
+        "namespace": "base44"
+      },
+      "do": [
+        {
+          "run_function": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "m31ReguaAutomatica",
+              "args": {}
+            },
+            "then": "end"
+          }
+        }
+      ]
+    },
+    "x-base44-migrated-from-automation": {
+      "legacy_payload_function": "m31ReguaAutomatica"
+    }
+  },
+  {
+    "name": "Lembrete de vencimento — Fornecedores (Thalita)",
+    "description": "Todo dia às 09h verifica parcelas de fornecedores com vencimento próximo (3 dias) e ainda pendentes, e notifica a gestora Thalita via WhatsApp.",
+    "trigger": {
+      "condition": null,
+      "config": {
+        "trigger_type": "scheduled",
+        "events": [],
+        "schedule_mode": "recurring",
+        "cron_expression": "0 12 * * *",
+        "one_time_date": null,
+        "timezone": "UTC",
+        "interval_value": null,
+        "interval_unit": null,
+        "interval_anchor": null,
+        "ends_type": "never",
+        "ends_on_date": null,
+        "ends_after_count": null
+      }
+    },
+    "definition": {
+      "document": {
+        "dsl": "1.0.0",
+        "name": "lembrete_de_vencimento_fornecedores_thalita",
+        "version": "1.0",
+        "namespace": "base44"
+      },
+      "do": [
+        {
+          "run_function": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "m31LembreteVencimentoFornecedor",
+              "args": {}
+            },
+            "then": "end"
+          }
+        }
+      ]
+    },
+    "x-base44-migrated-from-automation": {
+      "legacy_payload_function": "m31LembreteVencimentoFornecedor"
+    }
+  },
+  {
+    "definition": {
+      "document": {
+        "dsl": "1.0.0",
+        "name": "controle_di_rio_de_whatsapp_garantir_registro_do_dia",
+        "version": "1.0",
+        "namespace": "base44"
+      },
+      "do": [
+        {
+          "run_function": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "m31GarantirControleDiario",
+              "args": {}
+            },
+            "then": "end"
+          }
+        }
+      ]
+    },
+    "trigger": {
+      "condition": null,
+      "config": {
+        "trigger_type": "scheduled",
+        "events": [],
+        "schedule_mode": "recurring",
+        "cron_expression": "55 10 * * *",
+        "one_time_date": null,
+        "timezone": "UTC",
+        "interval_value": null,
+        "interval_unit": null,
+        "interval_anchor": null,
+        "ends_type": "never",
+        "ends_on_date": null,
+        "ends_after_count": null
+      }
+    },
+    "name": "Controle diário de WhatsApp — garantir registro do dia",
+    "description": "Cria o registro M31WhatsAppControl do dia (Recife) se não existir. Sem ele o drenador para por fail-closed e todas as filas paralisam.",
+    "x-base44-migrated-from-automation": {
+      "legacy_payload_function": "m31GarantirControleDiario"
+    }
+  },
+  {
+    "name": "Alerta Pagamento Órfão Asaas",
+    "description": "Verifica pagamentos confirmados no Asaas nas últimas 24h que permanecem sem vínculo com inscrição por mais de 2h. Gera alerta automático no M31AuditLog para detecção proativa de falhas de sincronização.",
+    "trigger": {
+      "condition": null,
+      "config": {
+        "trigger_type": "scheduled",
+        "events": [],
+        "schedule_mode": "interval",
+        "cron_expression": null,
+        "one_time_date": null,
+        "timezone": "UTC",
+        "interval_value": 30,
+        "interval_unit": "minutes",
+        "interval_anchor": "2026-07-29T22:54:36.555000",
+        "ends_type": "never",
+        "ends_on_date": null,
+        "ends_after_count": null
+      }
+    },
+    "definition": {
+      "document": {
+        "dsl": "1.0.0",
+        "name": "alerta_pagamento_rf_o_asaas",
+        "version": "1.0",
+        "namespace": "base44"
+      },
+      "do": [
+        {
+          "run_function": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "m31AlertarPagamentoOrfao",
+              "args": {}
+            },
+            "then": "end"
+          }
+        }
+      ]
+    },
+    "x-base44-migrated-from-automation": {
+      "legacy_payload_function": "m31AlertarPagamentoOrfao"
+    }
+  },
+  {
+    "name": "M31 — Régua Segura — 10h",
+    "description": "Cobrança/recuperação com anti-bloqueio: lotes de 5, 20-60s entre mensagens, pausa 10min entre lotes. Limite diário crescente.",
+    "trigger": {
+      "condition": null,
+      "config": {
+        "trigger_type": "scheduled",
+        "events": [],
+        "schedule_mode": "recurring",
+        "cron_expression": "0 13 * * 1-6",
+        "one_time_date": null,
+        "timezone": "UTC",
+        "interval_value": null,
+        "interval_unit": null,
+        "interval_anchor": null,
+        "ends_type": "never",
+        "ends_on_date": null,
+        "ends_after_count": null
+      }
+    },
+    "definition": {
+      "document": {
+        "dsl": "1.0.0",
+        "name": "m31_r_gua_segura_10h",
+        "version": "1.0",
+        "namespace": "base44"
+      },
+      "do": [
+        {
+          "run_function": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "m31ReguaSegura",
+              "args": {}
+            },
+            "then": "end"
+          }
+        }
+      ]
+    },
+    "x-base44-migrated-from-automation": {
+      "legacy_payload_function": "m31ReguaSegura"
+    }
+  },
+  {
+    "name": "M31 — Notificar Inscrição ao Grupo",
+    "description": "Envia notificação automática para o grupo INSCRIÇÕES M31 | EQUIPE quando uma nova inscrição é criada com sucesso",
+    "trigger": {
+      "condition": null,
+      "config": {
+        "trigger_type": "entity",
+        "events": [
+          "create"
+        ],
+        "entity_name": "EventoM31Inscricao"
+      }
+    },
+    "definition": {
+      "document": {
+        "dsl": "1.0.0",
+        "name": "m31_notificar_inscri_o_ao_grupo",
+        "version": "1.0",
+        "namespace": "base44"
+      },
+      "do": [
+        {
+          "run_function": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "m31NotificarInscricaoGrupo",
+              "args": {}
+            },
+            "then": "end"
+          }
+        }
+      ]
+    },
+    "x-base44-migrated-from-automation": {
+      "legacy_payload_function": "m31NotificarInscricaoGrupo"
+    }
+  },
+  {
+    "description": "Safety net de reconciliação automática. A cada 30 min consulta pagamentos confirmados no Asaas e, se houver GAP (inscrição não aprovada OU aprovada sem boas-vindas há >30min), cria evento sintético para o worker processar (aprovar + enfileirar CONFIRMACAO_COM_QR prioridade 1).",
+    "name": "Reconciliação Confirmações — Safety Net 30min",
+    "definition": {
+      "document": {
+        "dsl": "1.0.0",
+        "name": "reconcilia_o_confirma_es_safety_net_30min",
+        "version": "1.0",
+        "namespace": "base44"
+      },
+      "do": [
+        {
+          "run_function": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "m31ReconciliarConfirmacoes30min",
+              "args": {
+                "rotina_horaria": true
+              }
+            },
+            "then": "end"
+          }
+        }
+      ]
+    },
+    "trigger": {
+      "condition": null,
+      "config": {
+        "trigger_type": "scheduled",
+        "events": [],
+        "schedule_mode": "interval",
+        "cron_expression": null,
+        "one_time_date": null,
+        "timezone": "UTC",
+        "interval_value": 60,
+        "interval_unit": "minutes",
+        "interval_anchor": "2026-08-03T11:02:03.531000",
+        "ends_type": "never",
+        "ends_on_date": null,
+        "ends_after_count": null
+      }
+    },
+    "x-base44-migrated-from-automation": {
+      "legacy_payload_function": "m31ReconciliarConfirmacoes30min"
+    }
+  }
+]
