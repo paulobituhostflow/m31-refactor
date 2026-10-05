@@ -27,7 +27,7 @@
 
 O environment `staging` no repositório `paulobituhostflow/m31-refactor` recebeu os quatro secrets do Worker, `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN` e a variable `APP_ORIGIN`. O token dedicado `m31-staging-github-actions` concede Workers Scripts Write, Queues Write e Account Settings Read apenas na conta cliente, com vencimento em **03/01/2027**. Deve ser renovado antes dessa data. Deploys continuam manuais por `workflow_dispatch`; publicação em produção exige ambiente separado.
 
-A confirmação do workflow hospedado e a inspeção do navegador são registradas ao concluir a execução. Nenhum segredo é incluído neste relatório.
+A primeira execução de deploy pelo GitHub é [37364817850](https://github.com/paulobituhostflow/m31-refactor/actions/runs/37364817850); uma nova execução será feita após a correção da sessão do perfil de leitura. Nenhum segredo é incluído neste relatório.
 
 ## Limites e operação
 
@@ -38,3 +38,7 @@ A conta de validação é temporária e será removida ao fim. Não foi criada u
 Os testes completos locais, inclusive fluxos financeiros com providers simulados, estão em `VALIDATION.md` e `LOCAL_VALIDATION.md`; esse resultado não equivale à homologação de providers reais.
 
 O repositório original permanece limpo no commit `c342879566d47d7b53ed8387687933e9c850085d`.
+
+## Correção encontrada na navegação
+
+O login do perfil `visualizacao` chegava à identificação operacional, mas a autorização da API bloqueava `m31AbrirSessaoOperacional`, embora o handler legado permitisse esse perfil. A autorização passou a permitir somente essa abertura adicional. O escopo continua vindo exclusivamente de `operacoes_permitidas` do membro, sem ampliação pelo nome informado; alterações de participantes e tarefas continuam bloqueadas. Teste de API com PostgreSQL cobre abertura, preservação do escopo e tentativa de alteração negada.

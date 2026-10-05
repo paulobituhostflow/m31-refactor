@@ -51,6 +51,7 @@ for (const [index, profile] of [
     user_email: email,
     perfil: profile,
     ativo: true,
+    operacoes_permitidas: profile === "visualizacao" ? ["inscritas"] : [],
     setor: profile === "lider_setor" ? "A" : null,
   });
 }
@@ -144,6 +145,25 @@ test("HTTP API protects financial and pastoral fields and scopes sector leaders"
         "visualizacao",
       )
     ).response.status,
+    403,
+  );
+});
+test("Read-only operators can open a session without widening scope or allowing participant mutations", async () => {
+  const opened = await call(
+    "/functions/m31AbrirSessaoOperacional",
+    { nome: "Paulo", whatsapp: "5581999990000" },
+    "visualizacao",
+  );
+  assert.equal(opened.response.status, 200);
+  assert.ok(opened.data.session_id);
+  assert.deepEqual(opened.data.operacoes_permitidas, ["inscritas"]);
+  assert.equal(
+    (await call("/functions/m31OperarParticipante", {
+      session_id: opened.data.session_id,
+      action: "update",
+      inscricao_id: "PAID",
+      data: { nome: "Changed" },
+    }, "visualizacao")).response.status,
     403,
   );
 });

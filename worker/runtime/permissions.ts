@@ -86,6 +86,7 @@ export function functionPermission(
     if (
       includes(member.perfil, readonlyProfiles) &&
       ![
+        "m31AbrirSessaoOperacional",
         "m31ResumoOperacional",
         "m31PanoramaOperacional",
         "m31HealthCheck",
