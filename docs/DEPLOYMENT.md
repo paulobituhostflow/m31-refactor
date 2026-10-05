@@ -1,6 +1,6 @@
-# Publicação futura
+# Publicação
 
-Nenhum comando remoto desta seção foi executado. Conclua a homologação descrita em `VALIDATION.md` antes de produção.
+A homologação foi provisionada em 05/10/2026 na conta do cliente: [M31 staging](https://m31-staging.paulobituadv.workers.dev), usando o projeto Supabase `hnesgoayhihpuvvtfddm`. As sete migrations e as duas filas de staging foram aplicadas. Produção, dados reais e integrações externas continuam para a etapa posterior. Consulte `REMOTE_VALIDATION.md` para as evidências e limites da validação hospedada.
 
 ## Separação de ambientes
 
@@ -72,7 +72,7 @@ Ele exige `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` e `EXPORT_ENCRYPTION_KEY` p
 
 ## Webhooks, domínio e jobs
 
-Cadastre no sandbox Asaas `https://<dominio-staging>/api/webhooks/asaas`, com `asaas-access-token` idêntico ao `ASAAS_WEBHOOK_TOKEN`. UAZAPI usa `/api/webhooks/uazapi` e `x-webhook-token`. O ID de evento/mensagem é obrigatório. Ainda não há webhooks registrados.
+Cadastre no sandbox Asaas `https://<dominio-staging>/api/webhooks/asaas`, com `asaas-access-token` idêntico ao `ASAAS_WEBHOOK_TOKEN`. UAZAPI usa `/api/webhooks/uazapi` e `x-webhook-token`. O ID de evento/mensagem é obrigatório. Nenhum webhook de provider externo foi registrado nesta homologação.
 
 Associe domínio e DNS ao Worker do ambiente após confirmar `APP_ORIGIN` e os redirects Auth. O app antigo não deve ser redirecionado nesta fase. Valide inscrições, parcelas, Pix, confirmação, camisas, caravana, cartinhas, arquivos, OAuth e todos os perfis com contas/destinos de teste.
 
@@ -84,6 +84,6 @@ Para workflows: inicialize o catálogo com uma conta super_admin em `POST /api/a
 
 `validate.yml` roda lint, tipos, testes, build frontend/Worker e Playwright com fixtures. Não depende de Base44 e não cria infraestrutura. `deploy.yml` roda apenas por `workflow_dispatch`, selecionando staging ou production, verifica o código, valida as variáveis, publica o Worker e executa smoke HTTP. A publicação não aplica migrations nem provisiona filas; essas etapas precisam estar concluídas.
 
-A promoção para produção é outra execução manual sobre o commit aprovado em homologação, sujeita à aprovação do environment GitHub. Configure essa proteção na UI do GitHub; o YAML não cria a política. Não houve execução de Actions remotas nesta entrega.
+A promoção para produção é outra execução manual sobre o commit aprovado em homologação, sujeita à aprovação do environment GitHub. Configure essa proteção na UI do GitHub; o YAML não cria a política. A validação do commit `6217340` passou na [Action 37358696059](https://github.com/paulobituhostflow/m31-refactor/actions/runs/37358696059). O ambiente GitHub `staging` recebeu os secrets necessários e `APP_ORIGIN`; o deploy hospedado deve ser conferido pela execução manual do workflow. O token Cloudflare de CI tem validade até 03/01/2027 e precisa ser renovado antes de vencer.
 
 Referências: [Static Assets SPA](https://developers.cloudflare.com/workers/static-assets/routing/single-page-application/), [RLS e service keys](https://supabase.com/docs/guides/database/postgres/row-level-security), [OAuth Google](https://developers.google.com/identity/protocols/oauth2/web-server), [OpenAI Responses e schemas](https://developers.openai.com/api/docs/guides/migrate-to-responses#6-update-structured-outputs-definitions), [Queues delivery](https://developers.cloudflare.com/queues/reference/delivery-guarantees/).

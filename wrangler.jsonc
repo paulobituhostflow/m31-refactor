@@ -61,7 +61,8 @@
         "EXTERNAL_SIDE_EFFECTS": "false",
         "AUTOMATIONS_ENABLED": "false",
         "PROVIDER_MODE": "live",
-        "ASAAS_BASE_URL": "https://api-sandbox.asaas.com/v3"
+        "ASAAS_BASE_URL": "https://api-sandbox.asaas.com/v3",
+        "APP_ORIGIN": "https://m31-staging.paulobituadv.workers.dev"
       },
       "queues": {
         "producers": [
@@ -87,7 +88,10 @@
         "crons": [
           "* * * * *"
         ]
-      }
+      },
+      "account_id": "d68b9866ccd1569a81be66d605d6072e",
+      "workers_dev": true,
+      "preview_urls": false
     },
     "production": {
       "name": "m31-production",
