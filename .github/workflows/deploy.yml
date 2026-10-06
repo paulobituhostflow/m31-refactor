@@ -23,6 +23,25 @@ jobs:
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
       TOKEN_ENCRYPTION_KEY: ${{ secrets.TOKEN_ENCRYPTION_KEY }}
+      ASAAS_API_KEY: ${{ secrets.ASAAS_API_KEY }}
+      ASAAS_WEBHOOK_TOKEN: ${{ secrets.ASAAS_WEBHOOK_TOKEN }}
+      UAZAPI_BASE_URL: ${{ secrets.UAZAPI_BASE_URL }}
+      UAZAPI_TOKEN: ${{ secrets.UAZAPI_TOKEN }}
+      UAZAPI_WEBHOOK_TOKEN: ${{ secrets.UAZAPI_WEBHOOK_TOKEN }}
+      BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+      EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+      EMAIL_FROM_NAME: ${{ secrets.EMAIL_FROM_NAME }}
+      WHATSAPP_GROUP_INVITE: ${{ vars.WHATSAPP_GROUP_INVITE }}
+      TEST_RECIPIENTS: ${{ secrets.TEST_RECIPIENTS }}
+      GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+      GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+      GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+      GOOGLE_CAMISAS_SHEET_ID: ${{ secrets.GOOGLE_CAMISAS_SHEET_ID }}
+      GOOGLE_CARTINHAS_SHEET_NAME: ${{ secrets.GOOGLE_CARTINHAS_SHEET_NAME }}
+      GOOGLE_BACKUP_FOLDER_NAME: ${{ secrets.GOOGLE_BACKUP_FOLDER_NAME }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      OPENAI_TEXT_MODEL: ${{ secrets.OPENAI_TEXT_MODEL }}
+      OPENAI_TRANSCRIPTION_MODEL: ${{ secrets.OPENAI_TRANSCRIPTION_MODEL }}
       APP_ORIGIN: ${{ vars.APP_ORIGIN }}
       VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
@@ -38,7 +57,7 @@ jobs:
       - run: npm run verify
       - name: Validate environment and prepare protected secrets
         run: node scripts/ci-secrets.mjs
-      - name: Upload required Worker secrets
+      - name: Upload configured Worker secrets
         run: npx wrangler secret bulk .ci-secrets.json --env "$DEPLOY_ENV"
       - name: Deploy configured environment
         run: npx wrangler deploy --env "$DEPLOY_ENV" --var "APP_ORIGIN:$APP_ORIGIN"

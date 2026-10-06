@@ -36,11 +36,11 @@ Em cada environment do GitHub, cadastre os secrets:
 - `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` e `SUPABASE_SERVICE_ROLE_KEY` do projeto daquele ambiente.
 - `TOKEN_ENCRYPTION_KEY`, aleatória com pelo menos 32 caracteres, própria daquele ambiente. Não rotacione sem migrar/recriptografar os tokens existentes.
 
-O grupo VIP público é configurado pela variable GitHub `WHATSAPP_GROUP_INVITE`, repassada ao build como `VITE_WHATSAPP_GROUP_INVITE`. Sem valor, a landing não mostra o link e o template de agradecimento começa com CTA vazio; nenhum convite da aplicação antiga é usado como fallback. O Worker usa um secret `WHATSAPP_GROUP_INVITE` configurado separadamente para os templates de mensagens.
+O grupo VIP público é configurado pela variable GitHub `WHATSAPP_GROUP_INVITE`, repassada ao build como `VITE_WHATSAPP_GROUP_INVITE`. Sem valor, a landing não mostra o link e o template de agradecimento começa com CTA vazio; nenhum convite da aplicação antiga é usado como fallback. O workflow também envia `WHATSAPP_GROUP_INVITE` ao Worker para os templates de mensagens.
 
-Cadastre `APP_ORIGIN` como variable HTTPS contendo a origem final do ambiente. O workflow injeta as variáveis públicas no build Vite e os quatro secrets obrigatórios no Worker. Chave publishable é pública; service role e chave de criptografia não entram no frontend.
+Cadastre `APP_ORIGIN` como variable HTTPS contendo a origem final do ambiente. O workflow injeta as variáveis públicas no build Vite, os quatro secrets obrigatórios e as integrações opcionais preenchidas no Worker. `SUPABASE_AUTH_SMTP_PASSWORD` é exclusivo da configuração administrativa do Auth e não é enviado ao Worker. Chave publishable é pública; service role e chave de criptografia não entram no frontend.
 
-Credenciais opcionais dos providers são Worker secrets, cadastradas separadamente via prompt:
+Credenciais opcionais dos providers são secrets do environment GitHub correspondente. O workflow publica somente as que estiverem preenchidas; valores ausentes não apagam bindings remotos. Alternativamente, cadastre diretamente no Worker via prompt protegido:
 
 ```sh
 npx wrangler secret put ASAAS_API_KEY --env staging
@@ -55,6 +55,8 @@ npx wrangler secret put TEST_RECIPIENTS --env staging
 ```
 
 Repita apenas no ambiente necessário. A referência completa está em `.dev.vars.example`. Configure o remetente autenticado do Brevo, `WHATSAPP_GROUP_INVITE`, modelos/chave OpenAI e as opções Google explicitamente. A URL UAZAPI deve apontar para uma instância dedicada. Nunca configure homologação com destinatários, planilhas ou grupos dos clientes.
+
+Em 06/10/2026, o environment `production` recebeu os secrets reais de Asaas, UAZAPI, Brevo, OpenAI, remetente, planilha e senha SMTP, além do convite VIP. A aprovação por `paulobituhostflow` está configurada. Produção ainda exige projeto Supabase, bindings/credenciais Cloudflare e `APP_ORIGIN`; não houve deploy de produção. Consulte `CLIENT_CONFIGURATION.md` para verificações e pendências.
 
 ## Auth e identidade
 
@@ -74,7 +76,7 @@ Ele exige `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` e `EXPORT_ENCRYPTION_KEY` p
 
 ## Webhooks, domínio e jobs
 
-Cadastre no sandbox Asaas `https://<dominio-staging>/api/webhooks/asaas`, com `asaas-access-token` idêntico ao `ASAAS_WEBHOOK_TOKEN`. UAZAPI usa `/api/webhooks/uazapi` e `x-webhook-token`. O ID de evento/mensagem é obrigatório. Nenhum webhook de provider externo foi registrado nesta homologação.
+Cadastre no sandbox Asaas `https://<dominio-staging>/api/webhooks/asaas`, com `asaas-access-token` idêntico ao `ASAAS_WEBHOOK_TOKEN`. UAZAPI usa `/api/webhooks/uazapi`, com sufixos opcionais `/{evento}/{tipodemensagem}`. O receptor autentica entregas nativas pelo `token` no corpo, comparado a `UAZAPI_TOKEN`, e remove essa credencial antes da persistência. O header `x-webhook-token`/`UAZAPI_WEBHOOK_TOKEN` fica disponível para relays, sem fallback quando o header informado estiver incorreto. O ID de evento/mensagem é obrigatório. Nenhum webhook de provider externo foi registrado nesta homologação.
 
 Associe domínio e DNS ao Worker do ambiente após confirmar `APP_ORIGIN` e os redirects Auth. O app antigo não deve ser redirecionado nesta fase. Valide inscrições, parcelas, Pix, confirmação, camisas, caravana, cartinhas, arquivos, OAuth e todos os perfis com contas/destinos de teste.
 

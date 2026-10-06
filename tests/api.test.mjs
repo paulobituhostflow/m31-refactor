@@ -16,6 +16,8 @@ const env = {
   SUPABASE_PUBLISHABLE_KEY: "VALIDACAO_PUBLIC",
   TOKEN_ENCRYPTION_KEY: "VALIDACAO_API_ENCRYPTION_KEY_000000000",
   ASAAS_WEBHOOK_TOKEN: "VALIDACAO_WEBHOOK",
+  UAZAPI_TOKEN: "VALIDACAO_UAZAPI_INSTANCE",
+  UAZAPI_WEBHOOK_TOKEN: "VALIDACAO_UAZAPI_RELAY",
   ASSETS: {
     fetch: () =>
       new Response("<html>SPA</html>", {
@@ -90,6 +92,47 @@ async function call(path, body = {}, user, extra = {}) {
 test.after(async () => {
   globalThis.fetch = originalFetch;
   await fixture.pg.close();
+});
+test("native UAZAPI deliveries accept URL suffixes, deduplicate and remove credentials from durable jobs", async () => {
+  const payload = {
+    EventType: "messages",
+    token: env.UAZAPI_TOKEN,
+    message: {
+      id: "VALIDACAO_UAZAPI_NATIVE",
+      messageid: "VALIDACAO_UAZAPI_NATIVE_SHORT",
+      sender: "5581999990000@s.whatsapp.net",
+      chatid: "VALIDACAO_GROUP@g.us",
+      isGroup: true,
+      fromMe: false,
+      text: "VALIDACAO mensagem",
+      content: { text: "VALIDACAO content object" },
+      messageTimestamp: 1791288000000,
+    },
+  };
+  assert.equal((await call("/webhooks/uazapi/messages/text", { ...payload, token: "INVALID" })).response.status, 401);
+  assert.equal((await call("/webhooks/uazapi/messages/text", payload, undefined, { "x-webhook-token": "INVALID" })).response.status, 401);
+  assert.equal((await call("/webhooks/uazapi/connection/text", payload)).response.status, 400);
+  assert.equal((await call("/webhooks/uazapi/messages/text", payload)).response.status, 200);
+  assert.equal((await call("/webhooks/uazapi", payload)).response.status, 200);
+  const { rows } = await fixture.pg.query("SELECT args FROM m31_outbox WHERE dedup_key='uazapi:VALIDACAO_UAZAPI_NATIVE:messages'");
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].args.token, undefined);
+  assert.equal(JSON.stringify(rows).includes(env.UAZAPI_TOKEN), false);
+  assert.equal(rows[0].args.event, "messages");
+  assert.equal(rows[0].args.data.phone, "5581999990000");
+  assert.equal(rows[0].args.data.isGroupMessage, true);
+  assert.equal(rows[0].args.data.key.remoteJid, payload.message.chatid);
+  assert.equal(rows[0].args.data.key.participant, payload.message.sender);
+  assert.equal(rows[0].args.data.timestamp, payload.message.messageTimestamp);
+});
+test("UAZAPI relay authentication remains supported and invalid messages never enter the queue", async () => {
+  const headers = { "x-webhook-token": env.UAZAPI_WEBHOOK_TOKEN };
+  const payload = { id: "VALIDACAO_UAZAPI_RELAY", event: "message", text: "VALIDACAO" };
+  assert.equal((await call("/webhooks/uazapi", payload, undefined, headers)).response.status, 200);
+  assert.equal((await call("/webhooks/uazapi", { token: env.UAZAPI_TOKEN, EventType: "messages", message: {} })).response.status, 400);
+  assert.equal((await call("/webhooks/uazapi", { token: env.UAZAPI_TOKEN, id: {} })).response.status, 400);
+  assert.equal((await call("/webhooks/asaas/messages/text", payload, undefined, { "asaas-access-token": env.ASAAS_WEBHOOK_TOKEN })).response.status, 404);
+  assert.equal((await call("/webhooks/uazapi", payload)).response.status, 401);
 });
 test("HTTP API denies anonymous entity reads and returns JSON for unknown endpoints", async () => {
   assert.equal(
