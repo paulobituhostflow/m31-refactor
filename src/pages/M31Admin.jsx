@@ -113,6 +113,10 @@ export default function M31Admin() {
   const permissoesPorPerfil = {
     super_admin: ['home', 'dashboard', 'saude', 'operacoes', 'participantes', 'checkin', 'config_evento', 'voluntarios', 'intercessao', 'tarefas', 'logistica', 'cronograma', 'cartinhas', 'financeiro', 'transacoes', 'fornecedores', 'contas', 'config_bot', 'equipe', 'solicitacoes', 'logs', 'disparos', 'importar', 'exportar', 'builder', 'auditoria', 'status_envios', 'central_mensagens', 'branding', 'conciliacao'],
     coordenador: ['home', 'dashboard', 'saude_op', 'operacoes', 'participantes', 'checkin', 'config_evento', 'tarefas', 'logistica', 'cronograma', 'cartinhas', 'equipe', 'solicitacoes', 'logs', 'voluntarios', 'disparos'],
+    gestao_operacional: ['home', 'dashboard', 'operacoes', 'participantes', 'checkin', 'config_evento', 'voluntarios', 'tarefas', 'logistica', 'cronograma', 'fornecedores'],
+    coordenadora_geral: ['home', 'dashboard', 'operacoes', 'participantes', 'checkin', 'voluntarios', 'tarefas', 'logistica', 'cronograma', 'fornecedores', 'contas'],
+    gestora_inscricoes: ['home', 'dashboard', 'operacoes', 'participantes', 'checkin', 'voluntarios', 'tarefas', 'logistica', 'cronograma', 'fornecedores'],
+    coordenacao_participantes: ['home', 'dashboard', 'operacoes', 'participantes', 'checkin', 'voluntarios', 'tarefas', 'logistica', 'cronograma', 'fornecedores'],
     visualizacao: ['home', 'participantes', 'config_evento', 'voluntarios', 'importar', 'exportar', 'tarefas', 'logistica', 'cronograma', 'fornecedores', 'operacoes', 'financeiro', 'transacoes', 'contas', 'equipe', 'conciliacao'],
     voluntario: ['home', 'checkin', 'status_envios'],
   };

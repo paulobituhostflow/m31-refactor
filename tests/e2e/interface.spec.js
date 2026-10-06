@@ -19,3 +19,42 @@ test('contrato de login legado recebe access_token e conserva a sessão Supabase
  await page.route('http://127.0.0.1:54321/auth/v1/**',async route=>{const body={access_token:token,refresh_token:'VALIDACAO_REFRESH_TOKEN',expires_in:3600,token_type:'bearer',user};await route.fulfill({status:route.request().method()==='OPTIONS'?204:200,headers:{'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'*','Access-Control-Allow-Methods':'POST,GET,OPTIONS'},contentType:'application/json',body:route.request().method()==='OPTIONS'?'':JSON.stringify(body)});});
  await page.goto('/m31-login');await expect(page.locator('#root')).not.toBeEmpty();const result=await page.evaluate(async()=>{const{base44}=await import('/src/api/base44Client.js');const login=await base44.auth.loginViaEmailPassword('VALIDACAO_LOGIN@example.invalid','VALIDACAO_PASSWORD_ONLY');await base44.auth.setToken(login.access_token);return{token:typeof login.access_token,matching:login.access_token===login.session.access_token};});expect(result).toEqual({token:'string',matching:true});
 });
+
+
+test('perfil operacional abre o painel e conserva a separação do financeiro',async({page})=>{
+ await fixtures(page);
+ const membro={id:'VALIDACAO_MEMBRO',user_email:'VALIDACAO@example.invalid',nome:'VALIDACAO',perfil:'gestao_operacional',ativo:true};
+ await page.route('**/api/auth/me',route=>route.fulfill({json:{id:'VALIDACAO_USER',email:membro.user_email,full_name:'VALIDACAO',role:'user',membro}}));
+ await page.route('**/api/entities/**',route=>route.fulfill({json:route.request().url().includes('EventoM31Membro')?[membro]:[]}));
+ await page.goto('/m31-admin');
+ await expect(page.getByText('Visão Geral',{exact:true}).first()).toBeVisible();
+ await expect(page.getByText('Inscrições',{exact:true}).first()).toBeVisible();
+ await expect(page.getByText('Dashboard Financeiro',{exact:true})).toHaveCount(0);
+ await expect(page.getByText('Seu perfil não tem acesso a este painel.')).toHaveCount(0);
+ await page.goto('/admin');
+ await expect(page.getByText('Apenas administradores podem acessar esta página.')).toBeVisible();
+});
+
+test('link privado permite definir senha e remove a credencial da URL',async({page})=>{
+ await fixtures(page);
+ const part=value=>Buffer.from(JSON.stringify(value)).toString('base64url');
+ const user={id:'00000000-0000-4000-a000-000000000098',email:'VALIDACAO_SENHA@example.invalid',user_metadata:{},app_metadata:{provider:'email'}};
+ const token=part({alg:'HS256',typ:'JWT'})+'.'+part({sub:user.id,exp:Math.floor(Date.now()/1000)+3600,aud:'authenticated',role:'authenticated'})+'.VALIDACAO_SIGNATURE';
+ let verifications=0,updates=0;
+ await page.route('http://127.0.0.1:54321/auth/v1/**',async route=>{
+  const request=route.request(),path=new URL(request.url()).pathname;
+  if(request.method()==='OPTIONS'){await route.fulfill({status:204,headers:{'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'*','Access-Control-Allow-Methods':'POST,PUT,GET,OPTIONS'}});return;}
+  if(path.endsWith('/verify')){verifications++;expect(request.postDataJSON()).toMatchObject({token_hash:'VALIDACAO_HASH',type:'recovery'});}
+  if(path.endsWith('/user')&&request.method()==='PUT'){updates++;expect(request.postDataJSON().password.length).toBeGreaterThanOrEqual(12);}
+  const body=path.endsWith('/user')?user:{access_token:token,refresh_token:'VALIDACAO_REFRESH',expires_in:3600,token_type:'bearer',user};
+  await route.fulfill({status:200,headers:{'Access-Control-Allow-Origin':'*'},json:body});
+ });
+ await page.goto('/m31-reset-password#token_hash=VALIDACAO_HASH&type=recovery');
+ await expect(page.getByLabel('Nova senha')).toBeEnabled();
+ await expect(page.getByText('Conta: '+user.email)).toBeVisible();
+ expect(new URL(page.url()).hash).toBe('');
+ await page.getByLabel('Nova senha').fill('VALIDACAO_PASSWORD_2026');
+ await page.getByRole('button',{name:'Salvar senha'}).click();
+ await expect(page.getByText('Senha atualizada. Você já pode entrar no painel.')).toBeVisible();
+ expect(verifications).toBe(1);expect(updates).toBe(1);
+});

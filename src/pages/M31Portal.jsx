@@ -68,6 +68,8 @@ export default function M31Portal() {
           perfil === 'coordenador'
         ) {
           navigate('/m31-admin', { replace: true });
+        } else if (perfil === 'cartinhas') {
+          navigate('/cartinhas', { replace: true });
         } else if (perfil === 'lider_setor') {
           navigate('/m31-coordenador', { replace: true });
         } else if (perfil === 'checkin' || perfil === 'voluntario') {

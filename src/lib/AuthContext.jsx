@@ -4,13 +4,13 @@ const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
  const [user, setUser] = useState(null); const [loading, setLoading] = useState(true);
  const [appPublicSettings, setSettings] = useState(null);
- async function checkAppState() {
-  setLoading(true);
+ async function checkAppState(showLoading = false) {
+  if (showLoading) setLoading(true);
   try { setSettings(await fetch('/api/public-settings').then(r => r.json())); setUser(await base44.auth.me()); }
   catch { setUser(null); } finally { setLoading(false); }
  }
  useEffect(() => {
-  checkAppState(); let subscription;
+  checkAppState(true); let subscription;
   try { subscription = getSupabase().auth.onAuthStateChange(() => { setTimeout(checkAppState, 0); }).data.subscription; } catch { /* Initial configuration message is shown by the login form. */ }
   return () => subscription?.unsubscribe();
  }, []);

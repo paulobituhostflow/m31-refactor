@@ -27,6 +27,7 @@ async function start() {
     "20261005000500_webhooks_recovery.sql",
     "20261005000600_scopes_relations.sql",
     "20261005000700_realtime_delete_scope.sql",
+    "20261006000100_legacy_duplicate_keys.sql",
   ]) {
     const sql = (
       await readFile(
