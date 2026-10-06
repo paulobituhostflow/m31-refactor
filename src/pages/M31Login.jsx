@@ -82,9 +82,11 @@ export default function M31Login() {
         {/* Identidade M31 */}
         <div style={styles.header}>
           <M31Logo size="2xl" />
-          <h1 style={styles.titulo}>Acesso à Gestão</h1>
-          <p style={styles.subtitulo}>M31 Filhas · Plataforma de Gestão</p>
+          <h1 style={styles.titulo}>Entrar no M31</h1>
+          <p style={styles.subtitulo}>Acesse a área autorizada para sua conta.</p>
         </div>
+
+        <a href="/gestao" style={{ ...styles.btnPrimario, textDecoration: 'none', marginBottom: '20px' }}>Gestão operacional da equipe</a>
 
         {/* 1. Google */}
         <button

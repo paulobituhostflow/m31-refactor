@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
+import { getM31HomeRoute } from '@/lib/m31PanelAccess';
 
 export default function M31Portal() {
   const navigate = useNavigate();
@@ -25,61 +26,10 @@ export default function M31Portal() {
         const user = await base44.auth.me();
         setStatus(`Olá, ${user.full_name?.split(' ')[0] || 'usuário'}! Carregando seu perfil...`);
 
-        // 3. admin Base44 → vai direto para o painel completo
-        if (user.role === 'admin') {
-          navigate('/admin', { replace: true });
-          return;
-        }
-
-        // 4. Buscar perfil na entidade EventoM31Membro
-        const membros = await base44.entities.EventoM31Membro.filter({
-          user_email: user.email,
-          ativo: true,
-        });
-
-        const membro = membros?.[0];
-
-        if (!membro) {
-          // Usuário autenticado mas sem perfil M31 — solicita acesso automaticamente
-          setStatus('Solicitando acesso ao administrador...');
-          try {
-            const provedor_login = localStorage.getItem('m31_login_provider') || 'desconhecido';
-            const app_url = window.location.origin;
-            await base44.functions.invoke('m31SolicitarAcesso', { provedor_login, app_url });
-          } catch (solicErr) {
-            console.error('Erro ao solicitar acesso:', solicErr);
-          }
-          navigate('/m31-sem-acesso', { replace: true });
-          return;
-        }
-
-        const perfil = membro.perfil;
-
-        // 5. Redirecionar por perfil
-        if (perfil === 'super_admin') {
-          navigate('/admin', { replace: true });
-        } else if (perfil === 'gestora_inscricoes' || perfil === 'visualizacao') {
-          // Gestão de inscritas: consulta/pesquisa operacional mobile-first.
-          navigate('/m31-gestao-mobile', { replace: true });
-        } else if (
-          perfil === 'gestao_operacional' ||
-          perfil === 'coordenadora_geral' ||
-          perfil === 'coordenacao_participantes' ||
-          perfil === 'coordenador'
-        ) {
-          navigate('/m31-admin', { replace: true });
-        } else if (perfil === 'cartinhas') {
-          navigate('/cartinhas', { replace: true });
-        } else if (perfil === 'lider_setor') {
-          navigate('/m31-coordenador', { replace: true });
-        } else if (perfil === 'checkin' || perfil === 'voluntario') {
-          navigate('/m31-coordenador', { replace: true });
-        } else {
-          // fallback seguro
-          navigate('/m31-admin', { replace: true });
-        }
+        navigate(getM31HomeRoute(user), { replace: true });
 
       } catch (err) {
+        if (err?.status === 403) { navigate('/m31-sem-acesso', { replace: true }); return; }
         setStatus('Erro ao verificar acesso. Tente novamente.');
         console.error(err);
       }

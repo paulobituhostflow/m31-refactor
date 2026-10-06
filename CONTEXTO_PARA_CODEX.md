@@ -1,6 +1,6 @@
 # M31: contexto da versão independente para o Codex do cliente
 
-Atualizado em 05/10/2026. Este documento explica a mudança da aplicação Base44 para a cópia independente e orienta a continuidade do trabalho.
+Atualizado em 06/10/2026. Este documento explica a mudança da aplicação Base44 para a cópia independente e orienta a continuidade do trabalho.
 
 ## 1. Ponto de partida e estado atual
 
@@ -11,15 +11,15 @@ O M31 existente foi copiado para funcionar com Cloudflare Workers e Supabase. A 
 | Repositório original, conectado ao Base44 | `paulobituhostflow/projeto-m31` |
 | Commit original usado como base | `c342879566d47d7b53ed8387687933e9c850085d` |
 | Novo repositório independente | [paulobituhostflow/m31-refactor](https://github.com/paulobituhostflow/m31-refactor) |
-| Branch publicada | `main` |
-| Commit da aplicação validada e implantada | `e87b2ec819b696abc13b2affd724ff7903b3eb94` |
-| Homologação publicada | [M31 staging](https://m31-staging.paulobituadv.workers.dev/m31) · [Login da gestão](https://m31-staging.paulobituadv.workers.dev/m31-login) |
+| Branch de migração | `feature/m31-data-migration`, PR #1 em rascunho |
+| Commit da publicação inicial | `e87b2ec819b696abc13b2affd724ff7903b3eb94` |
+| Homologação publicada | [M31 staging](https://m31-staging.paulobituadv.workers.dev/m31) · [Login da gestão](https://m31-staging.paulobituadv.workers.dev/gestao) |
 | Validação desse commit | [GitHub Actions — sucesso](https://github.com/paulobituhostflow/m31-refactor/actions/runs/37365521748) |
 | Deploy desse commit | [GitHub Actions — sucesso](https://github.com/paulobituhostflow/m31-refactor/actions/runs/37365531388) |
 
 O novo Git começou sem o histórico anterior. Para comparar as versões, use o commit original acima e o novo repositório: o ancestral do Git novo não representa o histórico da aplicação Base44.
 
-O código está no GitHub e a homologação está implantada em Cloudflare/Supabase na conta do cliente. Nenhum cliente real foi exportado ou importado, nenhum webhook de produção foi trocado e a aplicação Base44 permaneceu intacta. Alterações neste novo repositório não são sincronizadas com o Base44.
+O código está no GitHub e a homologação está implantada em Cloudflare/Supabase na conta do cliente. A cópia de staging recebeu 25.924 registros, nove contas registradas e dois convites pendentes em 06/10/2026. A transição de senha antiga no primeiro login foi implementada apenas em staging, preservando os perfis; consulte [MIGRATION.md](docs/MIGRATION.md) para estado, requisitos e limites. Nenhum webhook de produção foi trocado e a aplicação Base44 permaneceu intacta. Alterações neste novo repositório não são sincronizadas com o Base44.
 
 O escopo é o M31: inscrições, participantes, pagamentos, caravanas, Servir, camisas, cartinhas, check-in, portal, gestão, acessos, tarefas, logística, fornecedores e financeiro. Páginas de outros produtos ficaram fora; dependências compartilhadas necessárias ao M31 foram preservadas.
 

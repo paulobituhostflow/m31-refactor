@@ -15,6 +15,8 @@ export interface RuntimeEnv extends Omit<
   | "PROVIDER_MODE"
   | "EXTERNAL_SIDE_EFFECTS"
   | "AUTOMATIONS_ENABLED"
+  | "LEGACY_PASSWORD_MIGRATION_ENABLED"
+  | "LEGACY_BASE44_APP_ID"
 > {
   SUPABASE_URL: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
@@ -24,6 +26,8 @@ export interface RuntimeEnv extends Omit<
   PROVIDER_MODE: string;
   EXTERNAL_SIDE_EFFECTS: string;
   AUTOMATIONS_ENABLED: string;
+  LEGACY_PASSWORD_MIGRATION_ENABLED?: string;
+  LEGACY_BASE44_APP_ID?: string;
 }
 export interface EntityApi {
   list(

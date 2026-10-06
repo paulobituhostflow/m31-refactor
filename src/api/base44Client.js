@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { loginWithMigratedPassword } from '@/lib/m31PasswordLogin';
 let singleton;
 export function getSupabase() {
   if (!singleton) {
@@ -45,7 +46,14 @@ export const base44 = {
   auth: {
     me: () => request('/auth/me', undefined, { method: 'GET' }).then(r => r.data),
     isAuthenticated: async () => !!(await getSupabase().auth.getSession()).data.session,
-    loginViaEmailPassword: async (email, password) => { const r = await getSupabase().auth.signInWithPassword({ email, password }); if (r.error) throw r.error; return { ...r.data.session, user:r.data.user, session:r.data.session }; },
+    loginViaEmailPassword: async (email, password) => {
+      const data = await loginWithMigratedPassword(getSupabase().auth, { email: email.trim().toLowerCase(), password }, async credentials => {
+        const response = await fetch('/api/auth/legacy-password', { method: 'POST', credentials: 'omit', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(credentials) });
+        const result = await response.json();
+        if (!response.ok) throw Object.assign(new Error(result.error || 'Não foi possível verificar seu acesso.'), { status: response.status, code: result.code });
+      });
+      return { ...data.session, user:data.user, session:data.session };
+    },
     setToken: async token=>{const {data}=await getSupabase().auth.getSession();if(!data.session||data.session.access_token!==token)throw new Error("Conclua o login para registrar uma sessão válida.");return true;},
     loginWithProvider: async (_provider, returnTo) => { sessionStorage.setItem('m31_return_to', safeReturnTo(returnTo)); const r = await getSupabase().auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${location.origin}/m31-auth-callback` } }); if (r.error) throw r.error; },
     resetPasswordRequest: async email => { const r = await getSupabase().auth.resetPasswordForEmail(email, { redirectTo: `${location.origin}/m31-reset-password` }); if (r.error) throw r.error; },

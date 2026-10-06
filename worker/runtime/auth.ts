@@ -18,7 +18,7 @@ export function database(env: RuntimeEnv): SupabaseClient {
   });
 }
 export async function authenticate(
-  req: Request,
+  req: Pick<Request, "headers">,
   db: SupabaseClient,
   work: UnitOfWork,
 ): Promise<User | null> {

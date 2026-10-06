@@ -1,4 +1,6 @@
-# Homologação hospedada — 05/10/2026
+# Homologação hospedada — histórico inicial de 05/10/2026
+
+**Atualização de 06/10/2026:** staging agora contém a cópia de dados e acessos descrita em [MIGRATION.md](MIGRATION.md). A publicação inicial e suas contagens abaixo são históricas.
 
 ## Ambiente
 
@@ -60,3 +62,15 @@ A inspeção da landing identificou dois convites WhatsApp fixos herdados do pro
 ## Setup oficial Cloudflare para Codex
 
 As instruções de [agent-setup/prompt.md](https://developers.cloudflare.com/agent-setup/prompt.md) foram executadas: 16 skills Cloudflare instaladas para Codex e MCP oficial `https://mcp.cloudflare.com/mcp` autenticado por OAuth com os acessos aprovados pelo usuário. Configuração anterior recebeu backup. Reabra o Codex para carregar o MCP na próxima sessão. O CLI opcional cf não foi instalado; o projeto continua usando Wrangler fixado no lockfile.
+
+
+## Transição de logins e gestão — 06/10/2026
+
+- Dados: 25.924 registros; 11 contas Auth (nove registradas e dois convites pendentes), nove identidades (oito ativas e uma inativa) e 11 membros. Nenhum hash antigo foi exportado. Convites não foram confirmados nem receberam perfil operacional.
+- SQL: migration `20261006000200` aplicada somente ao projeto staging e registrada no histórico. Nove controles de transição preparados; oito contas elegíveis ativas. RPCs/tabela privadas recusam anon/authenticated.
+- Teste remoto com credenciais sintéticas em memória: candidato elegível, conta inativa bloqueada, duas gravações simultâneas com exatamente um sucesso, bcrypt real, login com a mesma senha no Supabase, senha concorrente recusada, segundo commit bloqueado, perfil de gestão intacto. Conta/membro/identidade temporários removidos; controles voltaram a nove, outbox/provider_attempts/changes a zero e operations a quatro.
+- Worker: senha antiga validada exclusivamente no endpoint do app original; destino revalidado por transação, limites por IP/e-mail, resposta e request limitados, timeout, sem redirects, senha/token ausentes nos logs e sem importação de privilégios do provider.
+- Gestão: `/gestao` exige perfil autorizado. O escopo padrão do perfil resolve a lista importada vazia; nomes na conta compartilhada apenas restringem operações. Escopos explícitos e perfis de leitura continuam protegidos. Cookie de sessão em POST não consome mais o corpo antes do handler.
+- Limite: resposta correta do Base44 coberta com fixtures; endpoint real confirmado com uma conta sintética inexistente. A própria pessoa deve realizar o primeiro login real com sua senha antiga. Base44 precisa permanecer ativo durante a transição.
+
+Verificação local desta alteração: `npm run verify` passou (259 testes, lint com zero erros/131 avisos, tipos, builds e varredura de segredos). Playwright passou em 14 casos com fixtures; três casos da stack local ficaram ignorados nessa bateria. O teste remoto de senha descrito acima usou Supabase real, separadamente.

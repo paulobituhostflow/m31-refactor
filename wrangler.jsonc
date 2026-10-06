@@ -26,7 +26,9 @@
     "APP_ORIGIN": "http://127.0.0.1:5173",
     "EXTERNAL_SIDE_EFFECTS": "false",
     "AUTOMATIONS_ENABLED": "false",
-    "PROVIDER_MODE": "mock"
+    "PROVIDER_MODE": "mock",
+    "LEGACY_PASSWORD_MIGRATION_ENABLED": "false",
+    "LEGACY_BASE44_APP_ID": "69d51b279da069f623e291a6"
   },
   "queues": {
     "producers": [
@@ -62,7 +64,9 @@
         "AUTOMATIONS_ENABLED": "false",
         "PROVIDER_MODE": "live",
         "ASAAS_BASE_URL": "https://api-sandbox.asaas.com/v3",
-        "APP_ORIGIN": "https://m31-staging.paulobituadv.workers.dev"
+        "APP_ORIGIN": "https://m31-staging.paulobituadv.workers.dev",
+        "LEGACY_PASSWORD_MIGRATION_ENABLED": "true",
+        "LEGACY_BASE44_APP_ID": "69d51b279da069f623e291a6"
       },
       "queues": {
         "producers": [
@@ -100,7 +104,9 @@
         "EXTERNAL_SIDE_EFFECTS": "false",
         "AUTOMATIONS_ENABLED": "false",
         "PROVIDER_MODE": "live",
-        "ASAAS_BASE_URL": "https://api.asaas.com/v3"
+        "ASAAS_BASE_URL": "https://api.asaas.com/v3",
+        "LEGACY_PASSWORD_MIGRATION_ENABLED": "false",
+        "LEGACY_BASE44_APP_ID": "69d51b279da069f623e291a6"
       },
       "queues": {
         "producers": [

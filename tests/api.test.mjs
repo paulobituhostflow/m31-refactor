@@ -148,6 +148,12 @@ test("HTTP API protects financial and pastoral fields and scopes sector leaders"
     403,
   );
 });
+test("cookie-only POST keeps the request body readable and enforces management permissions", async () => {
+  const read = await call('/entities/EventoM31Inscricao', { action: 'get', id: 'PAID' }, undefined, { Cookie: 'm31_session=gestao_operacional' });
+  assert.equal(read.response.status, 200); assert.equal(read.data.id, 'PAID');
+  const financial = await call('/entities/M31TransacaoFinanceira', { action: 'list' }, undefined, { Cookie: 'm31_session=gestao_operacional' });
+  assert.equal(financial.response.status, 403);
+});
 test("Read-only operators can open a session without widening scope or allowing participant mutations", async () => {
   const opened = await call(
     "/functions/m31AbrirSessaoOperacional",
@@ -166,6 +172,29 @@ test("Read-only operators can open a session without widening scope or allowing 
     }, "visualizacao")).response.status,
     403,
   );
+});
+test('management defaults preserve imported empty scopes, shared names only restrict, and explicit scopes remain authoritative', async () => {
+  const fixtureUser = fixture.users.get('gestao_operacional'), originalEmail = fixtureUser.email;
+  const sharedEmail = 'paulobituadv+gestaom31@gmail.com';
+  fixtureUser.email = sharedEmail;
+  await fixture.pg.query("UPDATE m31_identities SET email=$1 WHERE legacy_user_id='LEGACY_gestao_operacional'", [sharedEmail]);
+  await fixture.pg.query("UPDATE m31_evento_m31_membro SET payload=jsonb_set(payload,'{user_email}',to_jsonb($1::text)) WHERE id='MEMBER_gestao_operacional'", [sharedEmail]);
+  try {
+    const open = nome => call('/functions/m31AbrirSessaoOperacional', { nome, whatsapp: '81999990000' }, 'gestao_operacional');
+    const paulo = await open('Paulo'); assert.equal(paulo.response.status, 200);
+    assert.deepEqual(paulo.data.operacoes_permitidas, ['inscritas','voluntarias','caravanas','camisas']);
+    const dulce = await open('Dulce'); assert.equal(dulce.response.status, 200); assert.deepEqual(dulce.data.operacoes_permitidas, ['camisas']);
+    assert.equal((await open('VALIDACAO Desconhecida')).response.status, 403);
+    await fixture.pg.exec(`UPDATE m31_evento_m31_membro SET payload=jsonb_set(payload,'{operacoes_permitidas}','["camisas"]') WHERE id='MEMBER_gestao_operacional'`);
+    assert.deepEqual((await open('Paulo')).data.operacoes_permitidas, ['camisas']);
+    assert.equal((await open('Thaysa Videres')).response.status, 403);
+    await fixture.pg.exec(`UPDATE m31_evento_m31_membro SET payload=jsonb_set(payload,'{operacoes_permitidas}','["UNKNOWN"]') WHERE id='MEMBER_gestao_operacional'`);
+    assert.equal((await open('Paulo')).response.status, 403);
+  } finally {
+    fixtureUser.email = originalEmail;
+    await fixture.pg.query("UPDATE m31_identities SET email=$1 WHERE legacy_user_id='LEGACY_gestao_operacional'", [originalEmail]);
+    await fixture.pg.query("UPDATE m31_evento_m31_membro SET payload=jsonb_set(jsonb_set(payload,'{user_email}',to_jsonb($1::text)),'{operacoes_permitidas}','[]') WHERE id='MEMBER_gestao_operacional'", [originalEmail]);
+  }
 });
 test("HTTP API revocation takes effect before executing a business function", async () => {
   await fixture.pg.query(

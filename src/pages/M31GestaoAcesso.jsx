@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Eye, EyeOff, LockKeyhole, Phone, UserRound } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { canOpenM31Panel } from '@/lib/m31PanelAccess';
 
 export const OPERATIONAL_ACCOUNT_EMAIL = 'paulobituadv+gestaom31@gmail.com';
 export const OPERATOR_STORAGE_KEY = 'm31_operador_atual';
@@ -84,6 +85,11 @@ export default function M31GestaoAcesso() {
       setSenha('');
       }
 
+      const user = await base44.auth.me();
+      if (!canOpenM31Panel(user, 'management')) {
+        throw Object.assign(new Error('Esta conta não possui perfil de gestão.'), { code: 'management_required' });
+      }
+
       const sessionResponse = await base44.functions.invoke('m31AbrirSessaoOperacional', {
         nome: nomeLimpo,
         whatsapp: telefoneNacional,
@@ -108,8 +114,12 @@ export default function M31GestaoAcesso() {
       window.location.replace('/m31-gestao-mobile');
     } catch (error) {
       const code = error?.code || error?.response?.data?.error || error?.data?.error || error?.message || '';
-      if (['auth_failed', 'auth_token_missing'].includes(code)) {
+      if (code === 'management_required') {
+        setErro('Esta conta não possui perfil de gestão. Entre pelo acesso geral para abrir sua área.');
+      } else if (['auth_failed', 'auth_token_missing', 'invalid_credentials'].includes(code)) {
         setErro('Não foi possível autenticar a conta da equipe. Verifique a senha e tente novamente.');
+      } else if (code === 'legacy_auth_unavailable' || error?.status === 429) {
+        setErro(error.message);
       } else if (String(code).includes('operator_not_registered') || String(code).includes('forbidden') || String(code).includes('scope')) {
         setErro('Seu operador está identificado, mas ainda não possui acesso à área liberada para ele.');
       } else {
@@ -125,7 +135,7 @@ export default function M31GestaoAcesso() {
         <img src={LOGO} alt="M31 Filhas" style={styles.logo} />
         <div style={styles.heading}>
           <h1 style={styles.title}>Gestão Operacional</h1>
-          <p style={styles.subtitle}>Identifique-se para acessar o painel.</p>
+          <p style={styles.subtitle}>Identifique-se e entre com uma conta autorizada de gestão.</p>
         </div>
 
         <form onSubmit={entrar} style={styles.form}>
@@ -202,7 +212,8 @@ export default function M31GestaoAcesso() {
           </button>
         </form>
 
-        <p style={styles.note}>Acesso restrito à equipe autorizada do M31.</p>
+        <p style={styles.note}>Use o e-mail e a senha que você já utilizava no M31.</p>
+        <a href="/m31-login" style={{ ...styles.note, display: 'block', textAlign: 'center' }}>Acesso geral às outras áreas</a>
       </section>
     </main>
   );
@@ -294,4 +305,3 @@ const styles = {
   },
   note: { margin: '16px 0 0', textAlign: 'center', color: '#8B817C', fontSize: '12px' },
 };
-
