@@ -241,7 +241,6 @@ async function registrarCompraCamisaWhatsApp(base44: any, text: string, msgId: s
 return (async (req) => {
   try {
     const body = await req.json().catch(() => ({}));
-    logger.log('[UAZAPI Webhook] 📥 RAW PAYLOAD:', JSON.stringify(body).substring(0, 1200));
 
     // ── Normalizar payload: UAZAPI pode enviar flat OU aninhado em "data" ──
     const message: any = (body as any).data || body;
@@ -252,14 +251,11 @@ return (async (req) => {
     const rawPhone: string = message.phone || message.number || message.from ||
       (message.key?.remoteJid ? String(message.key.remoteJid).split('@')[0] : '') || '';
     // ── Extrair texto de vários formatos possíveis ──
-    const text: string = message.message?.conversation || // Baileys
-      message.message?.extendedTextMessage?.text || // Baileys extended
-      message.message?.imageMessage?.caption || // Baileys foto com legenda (comprovante)
-      message.body || // n8n style
-      message.content ||
-      message.text ||
-      message.message ||
-      '';
+    const text: string = [message.message?.conversation, // Baileys
+      message.message?.extendedTextMessage?.text, // Baileys extended
+      message.message?.imageMessage?.caption, // Baileys foto com legenda
+      message.body, message.text, message.content, message.message,
+    ].find((value) => typeof value === 'string' && value.length > 0) || '';
     const senderName: string = message.senderName || message.pushName || message.notifyName || '';
     const wasSentByApi = message.wasSentByApi === true || message.fromMe === true ||
       (message.key?.fromMe === true);

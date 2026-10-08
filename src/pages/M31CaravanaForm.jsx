@@ -7,6 +7,7 @@ import { themeVars } from '@/lib/m31VisualTheme';
 import { M31Logo } from '@/components/M31Logo';
 import IdentityBanner from '@/components/m31/forms/IdentityBanner';
 import InscricaoRecuperadaBanner from '@/components/m31/forms/InscricaoRecuperadaBanner';
+import { resolverDestinoPagamento, navegarParaPagamento } from '@/lib/m31PagamentoRedirect';
 import { usePublicFormConfig } from '@/hooks/usePublicFormConfig';
 import ExtrasFields from '@/components/m31/forms/ExtrasFields';
 import { serializarExtras } from '@/components/m31/builder/publicFormsCatalog';
@@ -56,7 +57,9 @@ function SelectField({ label, required, value, onChange, options, disabled, fiel
   );
 }
 
-const VALOR = 97;
+// Regra comercial da Caravana: pagamento exclusivamente via PIX.
+const VALOR_PIX = 97;
+const brl = (v) => `R$ ${Number(v).toFixed(2).replace('.', ',')}`;
 
 export default function M31CaravanaForm({ caravanaId }) {
   // FORÇA BRUTA: Light mode no DOM
@@ -164,10 +167,10 @@ export default function M31CaravanaForm({ caravanaId }) {
   }, [retomadaToken]);
 
   useEffect(() => {
-    base44.entities.EventoM31Lote.filter({ ativo: true }, null, 5)
-      .then(lotes => {
-        const lote = (lotes || []).find(l => l.ativo) || null;
-        setLoteValor(lote?.valor ?? null);
+    base44.functions.invoke('m31PrecoInscricaoPublico', {})
+      .then(res => {
+        const valor = Number(res?.data?.valor);
+        setLoteValor(Number.isFinite(valor) && valor > 0 ? valor : null);
       })
       .catch(() => setLoteValor(null));
   }, []);
@@ -260,8 +263,18 @@ export default function M31CaravanaForm({ caravanaId }) {
         // Campos personalizados → observações do registro (payload oficial intocado).
         observacoes: serializarExtras(extras, valoresExtras) || undefined,
       });
-      if (res.data?.payment_url) setPayUrl(res.data.payment_url);
+      if (res.data?.ja_aprovado) {
+        setSuccess(true);
+        return;
+      }
+      const destino = resolverDestinoPagamento(res);
+      if (!destino.url) {
+        setError(destino.erro);
+        return;
+      }
+      setPayUrl(destino.url);
       setSuccess(true);
+      navegarParaPagamento(destino.url);
     } catch (e) {
       const msg = e?.response?.data?.error || e?.data?.error || e?.message;
       setError(msg || 'Erro ao processar. Seus dados foram preservados. Tente novamente ou fale com o suporte.');
@@ -422,7 +435,7 @@ export default function M31CaravanaForm({ caravanaId }) {
 
                   <div style={{ margin:'4px 0 14px', padding:'12px 14px', borderRadius:14, background:'rgba(91,14,45,.06)' }}>
                     <div style={{ fontSize:14, fontWeight:800, color:'var(--m31-brand)' }}>Pagamento da Caravana</div>
-                    <div style={{ fontSize:13, marginTop:3, color:'var(--m31-t2)' }}>Exclusivamente via PIX</div>
+                    <div style={{ fontSize:13, marginTop:3, color:'var(--m31-t2)' }}>Exclusivamente via PIX · {brl(VALOR_PIX)}</div>
                   </div>
 
                   {/* Resumo preço */}
@@ -435,7 +448,7 @@ export default function M31CaravanaForm({ caravanaId }) {
                       <div style={{ fontSize:12, color:'var(--m31-t3)', textDecoration:'line-through', marginBottom:2 }}>
                         {loteValor != null ? `R$ ${loteValor.toFixed(2).replace('.', ',')}` : ''}
                       </div>
-                      <div className="m31-ds-price-summary-amount">R$ 97,00</div>
+                      <div className="m31-ds-price-summary-amount">{brl(VALOR_PIX)}</div>
                     </div>
                   </div>
 

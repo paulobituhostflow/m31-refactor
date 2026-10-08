@@ -16,6 +16,8 @@ const env = {
   SUPABASE_PUBLISHABLE_KEY: "VALIDACAO_PUBLIC",
   TOKEN_ENCRYPTION_KEY: "VALIDACAO_API_ENCRYPTION_KEY_000000000",
   ASAAS_WEBHOOK_TOKEN: "VALIDACAO_WEBHOOK",
+  UAZAPI_TOKEN: "VALIDACAO_UAZAPI_INSTANCE",
+  UAZAPI_WEBHOOK_TOKEN: "VALIDACAO_UAZAPI_RELAY",
   ASSETS: {
     fetch: () =>
       new Response("<html>SPA</html>", {
@@ -34,6 +36,7 @@ for (const [index, profile] of [
   "visualizacao",
   "lider_setor",
   "cartinhas",
+  "intercessao_operacional",
 ].entries()) {
   const id = `00000000-0000-4000-a000-00000000000${index}`,
     email = `VALIDACAO.${profile}@example.invalid`;
@@ -90,6 +93,47 @@ async function call(path, body = {}, user, extra = {}) {
 test.after(async () => {
   globalThis.fetch = originalFetch;
   await fixture.pg.close();
+});
+test("native UAZAPI deliveries accept URL suffixes, deduplicate and remove credentials from durable jobs", async () => {
+  const payload = {
+    EventType: "messages",
+    token: env.UAZAPI_TOKEN,
+    message: {
+      id: "VALIDACAO_UAZAPI_NATIVE",
+      messageid: "VALIDACAO_UAZAPI_NATIVE_SHORT",
+      sender: "5581999990000@s.whatsapp.net",
+      chatid: "VALIDACAO_GROUP@g.us",
+      isGroup: true,
+      fromMe: false,
+      text: "VALIDACAO mensagem",
+      content: { text: "VALIDACAO content object" },
+      messageTimestamp: 1791288000000,
+    },
+  };
+  assert.equal((await call("/webhooks/uazapi/messages/text", { ...payload, token: "INVALID" })).response.status, 401);
+  assert.equal((await call("/webhooks/uazapi/messages/text", payload, undefined, { "x-webhook-token": "INVALID" })).response.status, 401);
+  assert.equal((await call("/webhooks/uazapi/connection/text", payload)).response.status, 400);
+  assert.equal((await call("/webhooks/uazapi/messages/text", payload)).response.status, 200);
+  assert.equal((await call("/webhooks/uazapi", payload)).response.status, 200);
+  const { rows } = await fixture.pg.query("SELECT args FROM m31_outbox WHERE dedup_key='uazapi:VALIDACAO_UAZAPI_NATIVE:messages'");
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].args.token, undefined);
+  assert.equal(JSON.stringify(rows).includes(env.UAZAPI_TOKEN), false);
+  assert.equal(rows[0].args.event, "messages");
+  assert.equal(rows[0].args.data.phone, "5581999990000");
+  assert.equal(rows[0].args.data.isGroupMessage, true);
+  assert.equal(rows[0].args.data.key.remoteJid, payload.message.chatid);
+  assert.equal(rows[0].args.data.key.participant, payload.message.sender);
+  assert.equal(rows[0].args.data.timestamp, payload.message.messageTimestamp);
+});
+test("UAZAPI relay authentication remains supported and invalid messages never enter the queue", async () => {
+  const headers = { "x-webhook-token": env.UAZAPI_WEBHOOK_TOKEN };
+  const payload = { id: "VALIDACAO_UAZAPI_RELAY", event: "message", text: "VALIDACAO" };
+  assert.equal((await call("/webhooks/uazapi", payload, undefined, headers)).response.status, 200);
+  assert.equal((await call("/webhooks/uazapi", { token: env.UAZAPI_TOKEN, EventType: "messages", message: {} })).response.status, 400);
+  assert.equal((await call("/webhooks/uazapi", { token: env.UAZAPI_TOKEN, id: {} })).response.status, 400);
+  assert.equal((await call("/webhooks/asaas/messages/text", payload, undefined, { "asaas-access-token": env.ASAAS_WEBHOOK_TOKEN })).response.status, 404);
+  assert.equal((await call("/webhooks/uazapi", payload)).response.status, 401);
 });
 test("HTTP API denies anonymous entity reads and returns JSON for unknown endpoints", async () => {
   assert.equal(
@@ -148,6 +192,51 @@ test("HTTP API protects financial and pastoral fields and scopes sector leaders"
     403,
   );
 });
+test("Intercessão role is limited to its audited panel and cannot access general records", async () => {
+  const report = await call(
+    "/functions/m31AuditoriaPagamentoIntercessao",
+    {},
+    "intercessao_operacional",
+  );
+  // No group config is seeded, so 404 confirms the request passed authorization.
+  assert.equal(report.response.status, 404);
+  assert.equal(
+    (
+      await call(
+        "/entities/EventoM31Inscricao",
+        { action: "list" },
+        "intercessao_operacional",
+      )
+    ).response.status,
+    403,
+  );
+  assert.equal(
+    (
+      await call(
+        "/entities/M31TransacaoFinanceira",
+        { action: "list" },
+        "intercessao_operacional",
+      )
+    ).response.status,
+    403,
+  );
+  assert.equal(
+    (
+      await call(
+        "/functions/m31ResumoOperacional",
+        {},
+        "intercessao_operacional",
+      )
+    ).response.status,
+    403,
+  );
+});
+test("cookie-only POST keeps the request body readable and enforces management permissions", async () => {
+  const read = await call('/entities/EventoM31Inscricao', { action: 'get', id: 'PAID' }, undefined, { Cookie: 'm31_session=gestao_operacional' });
+  assert.equal(read.response.status, 200); assert.equal(read.data.id, 'PAID');
+  const financial = await call('/entities/M31TransacaoFinanceira', { action: 'list' }, undefined, { Cookie: 'm31_session=gestao_operacional' });
+  assert.equal(financial.response.status, 403);
+});
 test("Read-only operators can open a session without widening scope or allowing participant mutations", async () => {
   const opened = await call(
     "/functions/m31AbrirSessaoOperacional",
@@ -166,6 +255,29 @@ test("Read-only operators can open a session without widening scope or allowing 
     }, "visualizacao")).response.status,
     403,
   );
+});
+test('management defaults preserve imported empty scopes, shared names only restrict, and explicit scopes remain authoritative', async () => {
+  const fixtureUser = fixture.users.get('gestao_operacional'), originalEmail = fixtureUser.email;
+  const sharedEmail = 'paulobituadv+gestaom31@gmail.com';
+  fixtureUser.email = sharedEmail;
+  await fixture.pg.query("UPDATE m31_identities SET email=$1 WHERE legacy_user_id='LEGACY_gestao_operacional'", [sharedEmail]);
+  await fixture.pg.query("UPDATE m31_evento_m31_membro SET payload=jsonb_set(payload,'{user_email}',to_jsonb($1::text)) WHERE id='MEMBER_gestao_operacional'", [sharedEmail]);
+  try {
+    const open = nome => call('/functions/m31AbrirSessaoOperacional', { nome, whatsapp: '81999990000' }, 'gestao_operacional');
+    const paulo = await open('Paulo'); assert.equal(paulo.response.status, 200);
+    assert.deepEqual(paulo.data.operacoes_permitidas, ['inscritas','voluntarias','caravanas','camisas']);
+    const dulce = await open('Dulce'); assert.equal(dulce.response.status, 200); assert.deepEqual(dulce.data.operacoes_permitidas, ['camisas']);
+    assert.equal((await open('VALIDACAO Desconhecida')).response.status, 403);
+    await fixture.pg.exec(`UPDATE m31_evento_m31_membro SET payload=jsonb_set(payload,'{operacoes_permitidas}','["camisas"]') WHERE id='MEMBER_gestao_operacional'`);
+    assert.deepEqual((await open('Paulo')).data.operacoes_permitidas, ['camisas']);
+    assert.equal((await open('Thaysa Videres')).response.status, 403);
+    await fixture.pg.exec(`UPDATE m31_evento_m31_membro SET payload=jsonb_set(payload,'{operacoes_permitidas}','["UNKNOWN"]') WHERE id='MEMBER_gestao_operacional'`);
+    assert.equal((await open('Paulo')).response.status, 403);
+  } finally {
+    fixtureUser.email = originalEmail;
+    await fixture.pg.query("UPDATE m31_identities SET email=$1 WHERE legacy_user_id='LEGACY_gestao_operacional'", [originalEmail]);
+    await fixture.pg.query("UPDATE m31_evento_m31_membro SET payload=jsonb_set(jsonb_set(payload,'{user_email}',to_jsonb($1::text)),'{operacoes_permitidas}','[]') WHERE id='MEMBER_gestao_operacional'", [originalEmail]);
+  }
 });
 test("HTTP API revocation takes effect before executing a business function", async () => {
   await fixture.pg.query(

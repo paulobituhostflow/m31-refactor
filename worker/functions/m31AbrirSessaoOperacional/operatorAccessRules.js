@@ -5,6 +5,20 @@ const INTERNAL_SCOPES = [
   { aliases: ['edilandia'], operations: ['voluntarias'] },
 ];
 
+export function defaultOperationalScope(profile) {
+  const defaults = {
+    super_admin: ['inscritas', 'voluntarias', 'caravanas', 'camisas'],
+    admin: ['inscritas', 'voluntarias', 'caravanas', 'camisas'],
+    gestao_operacional: ['inscritas', 'voluntarias', 'caravanas', 'camisas'],
+    coordenador: ['inscritas', 'voluntarias', 'caravanas', 'camisas'],
+    coordenadora_geral: ['inscritas', 'voluntarias', 'caravanas', 'camisas'],
+    coordenacao_participantes: ['inscritas', 'voluntarias', 'caravanas'],
+    gestora_inscricoes: ['inscritas', 'caravanas'],
+    visualizacao: ['inscritas', 'voluntarias', 'caravanas', 'camisas'],
+  };
+  return Object.hasOwn(defaults, profile) ? [...defaults[profile]] : [];
+}
+
 function normalizeName(value) {
   return String(value || '')
     .normalize('NFD')

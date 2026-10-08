@@ -29,12 +29,17 @@ for (let offset = 0; ; offset += 1000) {
       email: identity.email,
       options: { redirectTo: `${process.env.APP_ORIGIN}/m31-reset-password` },
     });
-    if (failure || !link.properties?.action_link)
+    if (failure || !link.properties?.hashed_token)
       throw new Error("Falha ao preparar recuperação.");
+    const address = new URL("/m31-reset-password", process.env.APP_ORIGIN);
+    address.hash = new URLSearchParams({
+      token_hash: link.properties.hashed_token,
+      type: "recovery",
+    }).toString();
     links.push({
       legacy_user_id: identity.legacy_user_id,
       email: identity.email,
-      url: link.properties.action_link,
+      url: address.href,
     });
   }
   if ((data || []).length < 1000) break;

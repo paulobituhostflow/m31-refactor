@@ -44,8 +44,8 @@ return (async (req: Request) => {
 
     try {
       const user = await base44.auth.me();
-      if (user && user.role !== 'admin') {
-        return Response.json({ error: 'Apenas administradores' }, { status: 403 });
+      if (user && user.role !== 'admin' && user.membro?.perfil !== 'intercessao_operacional') {
+        return Response.json({ error: 'Acesso restrito à equipe de Intercessão.' }, { status: 403 });
       }
     } catch { /* execução agendada */ }
 

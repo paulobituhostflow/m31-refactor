@@ -8,6 +8,7 @@ import { base44 } from '@/api/base44Client';
 import M31LandingRenderer from '@/components/m31/M31LandingRenderer';
 import { motion } from 'framer-motion';
 import { MapPin, Clock, Calendar, ChevronDown, Star, Sparkles, Play } from 'lucide-react';
+import { CAMINHO_INSCRICAO } from '@/lib/m31LandingCta';
 
 const GlobalStyles = () => (
   <style>{`
@@ -19,7 +20,9 @@ const GlobalStyles = () => (
 
 const JU_PHOTO = "/assets/9a9b399c2_images-5.jpeg";
 const M31_LOGO = "/assets/a22f06b49_LOGOM31FILHAS1.png";
-const INSCRICAO_URL = "/m31-inscricao";
+// Destino canônico da inscrição: o formulário dentro da própria aplicação.
+// O domínio institucional antigo (m31filhas.com.br) devolvia 404.
+const INSCRICAO_URL = CAMINHO_INSCRICAO;
 const VIP_URL = import.meta.env.VITE_WHATSAPP_GROUP_INVITE || '';
 const YOUTUBE_ID = "zWuffZgykCk";
 

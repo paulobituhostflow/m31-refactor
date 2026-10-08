@@ -1,30 +1,31 @@
-// @ts-nocheck -- Ported legacy domain implementation; typed request/runtime boundary in worker/runtime.
-
+// @ts-nocheck -- Ported Base44 domain flow with Worker runtime bindings.
 import type { HandlerContext } from "../../runtime/types";
 export default async function handler(req: Request, context: HandlerContext): Promise<Response> {
- const { client, config, fetch, logger } = context;
- const createClientFromRequest = (_req: Request) => client;
+  const { client, config, fetch, logger } = context;
+  const createClientFromRequest = (_req: Request) => client;
 /**
  * m31EnviarLinkCadastroConvidada
  *
- * Envia à presenteada (inscrição gift já paga, mas com cadastro pendente) UM link
- * seguro para completar seus próprios dados. NÃO envia QR Code nem boas-vindas final.
- * NÃO preenche data_envio_boas_vindas — o link não é a boas-vindas.
+ * COMUNICAÇÃO INICIAL DA VAGA PRESENTEADA.
  *
- * Fluxo:
- *  - valida que a inscrição é uma presenteada aprovada com cadastro pendente;
- *  - gera token aleatório seguro (uma única vez, idempotente);
- *  - monta a URL pública /completar-cadastro/{token};
- *  - dispara a mensagem do template 'convidada_completar_cadastro' via UAZAPI;
- *  - grava presenteado_token, presenteado_whatsapp_original e presenteado_link_enviado_em.
+ * Envia à beneficiária (inscrição gift já paga) a confirmação da sua vaga, o
+ * nome de quem a abençoou e o link oficial do grupo — SEM depender do QR Code.
+ * Inclui, como etapa separada, o link para completar os dados cadastrais.
  *
- * O envio final (boas-vindas + QR) continua sendo responsabilidade EXCLUSIVA de
- * m31DespacharConfirmacoes, disparado após a presenteada concluir o cadastro.
+ * O QR Code continua sendo responsabilidade EXCLUSIVA de m31DespacharConfirmacoes,
+ * disparado somente depois que a beneficiária conclui o cadastro.
+ *
+ * Governança: enfileira na M31FilaMensagem (aprovado_para_envio=true,
+ * forcar_envio=true) — o envio real é exclusivo do m31DrenarFila. Idempotente
+ * por dedup_key estável: reprocessar NÃO duplica a mensagem.
+ *
+ * Vínculo: aceita o vínculo reverso (presenteado_por_id) OU o direto (alguma
+ * inscrição aponta presenteado_id para esta). Nunca associa por nome/telefone.
  *
  * Payload: { inscricao_id: string, pagador_nome?: string }
  */
-
-const BASE_URL = '__APP_ORIGIN__';
+// Current Base44 flow adapted to the Supabase + Worker runtime.
+const BASE_URL = config('APP_ORIGIN') || '';
 
 function normalizePhone(phone: string): string {
   let d = (phone || '').replace(/\D/g, '');
@@ -32,31 +33,6 @@ function normalizePhone(phone: string): string {
   if (d.startsWith('55') && d.length >= 12) return d;
   if (d.length >= 10) return `55${d}`;
   return d;
-}
-
-// ENFILEIRA APENAS — não chama UAZAPI diretamente.
-// O envio real é exclusivo do m31DrenarFila.
-async function sendTextUAZAPI(base44: any, phone: string, message: string) {
-  const phoneSanitized = normalizePhone(phone);
-  const dedupKey = `CONVIDADA_LINK:${phoneSanitized}:${Date.now()}:${crypto.randomUUID().slice(0, 8)}`;
-  try {
-    await base44.asServiceRole.entities.M31FilaMensagem.create({
-      dedup_key: dedupKey,
-      participante_id: phoneSanitized,
-      telefone: phoneSanitized,
-      automacao: 'OPERACIONAL',
-      template: 'convidada_completar_cadastro',
-      versao: 'V1',
-      origem: 'm31EnviarLinkCadastroConvidada',
-      mensagens: [{ message, image_url: null }],
-      status: 'pendente',
-      aprovado_para_envio: false,
-      prioridade: 6,
-    });
-    return { sucesso: true, status: 200, body: 'enfileirado' };
-  } catch (e: any) {
-    return { sucesso: false, status: 500, body: e.message };
-  }
 }
 
 function gerarToken(): string {
@@ -101,6 +77,15 @@ async function buscarPagadorAsaas(asaasPaymentId: string): Promise<string | null
   return null;
 }
 
+async function resolverLinkGrupo(base44: any): Promise<string> {
+  try {
+    const grupos = await base44.asServiceRole.entities.M31GrupoConfig.filter({ finalidade: 'INSCRITAS_OFICIAL', ativo: true });
+    return grupos?.[0]?.invite_link || '';
+  } catch (_) {
+    return '';
+  }
+}
+
 return (async (req: Request): Promise<Response> => {
   try {
     const base44 = createClientFromRequest(req);
@@ -117,8 +102,19 @@ return (async (req: Request): Promise<Response> => {
     }
     const inscricao = inscricoes[0];
 
-    // Só presenteadas aprovadas
-    if (!inscricao.presenteado_por_id) {
+    // Vínculo: reverso (presenteado_por_id) ou direto (compradora aponta para cá).
+    let compradorId: string | null = inscricao.presenteado_por_id || null;
+    if (!compradorId) {
+      const compradoras = await base44.asServiceRole.entities.EventoM31Inscricao.filter(
+        { presenteado_id: inscricao.id }, '-created_date', 1);
+      if (compradoras.length > 0) {
+        compradorId = compradoras[0].id;
+        await base44.asServiceRole.entities.EventoM31Inscricao.update(inscricao.id, {
+          presenteado_por_id: compradorId,
+        }).catch(() => {});
+      }
+    }
+    if (!compradorId) {
       return Response.json({ error: 'nao_e_presenteada', inscricao_id }, { status: 400 });
     }
     if (!['aprovado', 'gratuito'].includes(inscricao.status_pagamento)) {
@@ -130,72 +126,112 @@ return (async (req: Request): Promise<Response> => {
       return Response.json({ error: 'telefone_invalido', telefone }, { status: 400 });
     }
 
-    // Idempotência: se o link já foi enviado, não reenvia
-    if (inscricao.presenteado_link_enviado_em && inscricao.presenteado_token) {
-      return Response.json({ sucesso: true, ja_enviado: true, token: inscricao.presenteado_token });
+    // Idempotência: dedup_key ESTÁVEL — reprocessar nunca duplica a mensagem.
+    const dedupKey = `${inscricao.id}:CONFIRMACAO_PRESENTEADA:V1`;
+    const existentes = await base44.asServiceRole.entities.M31FilaMensagem.filter(
+      { dedup_key: dedupKey }, '-created_date', 5);
+    const bloqueante = existentes.find((f: any) =>
+      ['pendente', 'processando', 'enviado', 'incerto', 'falha_terminal'].includes(f.status));
+    if (bloqueante) {
+      return Response.json({ sucesso: true, ja_enviado: true, status: bloqueante.status, token: inscricao.presenteado_token });
     }
 
-    // Gerar/reaproveitar token
     const token = inscricao.presenteado_token || gerarToken();
     const link = `${BASE_URL}/completar-cadastro/${token}`;
 
-    // Determinar quem presenteou (opcional, apenas para a mensagem)
+    // Quem abençoou: sempre que possível identificado (a mensagem usa o nome).
     let pagador = pagador_nome || null;
     if (!pagador) {
-      const compradoras = await base44.asServiceRole.entities.EventoM31Inscricao.filter({ id: inscricao.presenteado_por_id });
+      const compradoras = await base44.asServiceRole.entities.EventoM31Inscricao.filter({ id: compradorId });
       pagador = compradoras[0]?.nome || null;
       if (!pagador && compradoras[0]?.asaas_payment_id) {
         pagador = await buscarPagadorAsaas(compradoras[0].asaas_payment_id);
       }
     }
 
+    const linkGrupo = await resolverLinkGrupo(base44);
     const primeiroNome = (inscricao.nome || '').split(' ')[0] || 'Querida';
+
     const fallback = `Olá, ${primeiroNome}! 🌸\n\n` +
       (pagador ? `Você foi abençoada por *${pagador}* com uma inscrição no *M31 Filhas*! ` : `Você foi abençoada com uma inscrição no *M31 Filhas*! `) +
-      `\n\n✅ *Sua inscrição já está paga.* Não há nada a pagar.\n\n` +
-      `Falta só um passo: complete seus dados para garantir sua vaga e receber seu ingresso (QR Code).\n\n` +
-      `👉 ${link}\n\n` +
+      `\n\n✅ *Sua vaga já está garantida e paga.* Não há nada a pagar.\n\n` +
+      (linkGrupo ? `👇 *Entre no grupo oficial da Imersão M31 Filhas:*\n${linkGrupo}\n\n` : '') +
+      `📝 Falta só um passo: complete seus dados para receber seu ingresso (QR Code).\n👉 ${link}\n\n` +
       `Assim que você concluir, enviamos seu QR Code de entrada por aqui. Nos vemos no M31! 💛`;
 
-    const mensagem = await renderTemplate(base44, 'convidada_completar_cadastro', {
+    const mensagem = await renderTemplate(base44, 'convidada_vaga_confirmada', {
       nome: primeiroNome,
       pagador: pagador || '',
       link,
+      link_grupo: linkGrupo,
     }, fallback);
 
-    const res = await sendTextUAZAPI(base44, telefone, mensagem);
+    // ENFILEIRA APENAS — o envio real é exclusivo do m31DrenarFila.
+    // Nova compra confirmada: envio AUTOMÁTICO (aprovado_para_envio=true).
+    const execId = crypto.randomUUID();
+    await base44.asServiceRole.entities.M31FilaMensagem.create({
+      dedup_key: dedupKey,
+      participante_id: telefone,
+      telefone,
+      automacao: 'CONFIRMACAO_PRESENTEADA',
+      template: 'convidada_vaga_confirmada',
+      versao: 'V1',
+      origem: 'm31EnviarLinkCadastroConvidada',
+      inscricao_id: inscricao.id,
+      inscricao_nome: inscricao.nome || null,
+      mensagens: [{ message: mensagem, image_url: null }],
+      status: 'pendente',
+      aprovado_para_envio: true,
+      aprovado_por: 'auto_gov_presenteada',
+      aprovado_em: new Date().toISOString(),
+      prioridade: 1,
+      forcar_envio: true,
+      execution_id: execId,
+    });
 
-    // Persistir token + originais + timestamp do LINK (nunca data_envio_boas_vindas)
-    // Nota: presenteado_link_enviado_em só é setado quando a mensagem é aceita pela fila,
-    // NÃO quando é efetivamente enviada (isso exige aprovação + drenador).
     await base44.asServiceRole.entities.EventoM31Inscricao.update(inscricao.id, {
       presenteado_token: token,
       presenteado_whatsapp_original: inscricao.presenteado_whatsapp_original || inscricao.whatsapp,
       cadastro_pendente: true,
-      ...(res.sucesso ? { presenteado_link_enviado_em: new Date().toISOString(), last_contact_at: new Date().toISOString() } : {}),
+      presenteado_link_enviado_em: new Date().toISOString(),
+      last_contact_at: new Date().toISOString(),
     });
 
-    // Log de mensagem (não é boas-vindas)
+    // Registro separado de estado: ENFILEIRADA. Os desfechos reais (enviada /
+    // falhou / pendente) são gravados pelo m31DrenarFila, único sender.
+    // "Entregue" não é registrado: o provedor não fornece confirmação de entrega.
+    await base44.asServiceRole.entities.M31InscricaoTimeline.create({
+      inscricao_id: inscricao.id,
+      evento: 'presenteada_comunicacao_enfileirada',
+      etapa: 'comunicacao_presenteada',
+      status: 'pendente',
+      detalhe: `fila=${dedupKey} | grupo=${linkGrupo ? 'com_link' : 'sem_link'} | qr=pendente`,
+      origem: 'm31EnviarLinkCadastroConvidada',
+    }).catch(() => {});
+
     try {
       await base44.asServiceRole.entities.M31MessageLog.create({
         inscricao_id: inscricao.id, inscricao_nome: inscricao.nome, telefone,
-        tipo: 'manual', stage: 'convidada_completar_cadastro',
-        mensagem, sucesso: res.sucesso,
-        zapi_response: JSON.stringify(res), erro: res.sucesso ? null : (res.body || '').substring(0, 200),
+        tipo: 'manual', stage: 'convidada_vaga_confirmada',
+        mensagem, sucesso: true,
+        zapi_response: JSON.stringify({ enfileirado: true, dedup_key: dedupKey }),
+        erro: null,
         enviado_em: new Date().toISOString(),
       });
     } catch (_) {}
 
     return Response.json({
-      sucesso: res.sucesso,
+      sucesso: true,
+      enfileirado: true,
       inscricao: inscricao.nome,
       telefone,
       token,
       link,
+      link_grupo: linkGrupo || null,
       pagador: pagador || 'não identificado',
-      uazapi: res,
+      dedup_key: dedupKey,
     });
-  } catch (error) {
+  } catch (error: any) {
     return Response.json({ error: error.message }, { status: 500 });
   }
 })(req);

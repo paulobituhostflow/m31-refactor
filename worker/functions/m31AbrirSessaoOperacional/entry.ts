@@ -1,5 +1,5 @@
 // @ts-nocheck -- Ported legacy domain implementation; typed request/runtime boundary in worker/runtime.
-import { resolveOperationalScope } from './operatorAccessRules.js';
+import { resolveOperationalScope, defaultOperationalScope } from './operatorAccessRules.js';
 import type { HandlerContext } from "../../runtime/types";
 export default async function handler(req: Request, context: HandlerContext): Promise<Response> {
  const { client, config, fetch, logger } = context;
@@ -10,6 +10,8 @@ const ALLOWED_PROFILES = new Set([
   'gestao_operacional',
   'super_admin',
   'coordenacao_participantes',
+  'coordenador',
+  'coordenadora_geral',
   'gestora_inscricoes',
   'visualizacao',
   'camisas',
@@ -54,11 +56,12 @@ return (async (req: Request): Promise<Response> => {
     // para identificar a operadora em conta compartilhada legada e nunca pode
     // ampliar permissões. Isso impede alguém de digitar "Thalita" para ganhar acesso.
     const scopePersona = resolveOperationalScope(operador_nome);
-    const scopeConta = Array.isArray(member.operacoes_permitidas) && member.operacoes_permitidas.length > 0
+    const hasExplicitScope = Array.isArray(member.operacoes_permitidas) && member.operacoes_permitidas.length > 0;
+    const scopeConta = hasExplicitScope
       ? member.operacoes_permitidas.filter((op: string) => ['inscritas', 'voluntarias', 'caravanas', 'camisas'].includes(op))
       : [];
-    const scopePerfil = ['super_admin', 'admin'].includes(member.perfil) ? ['inscritas', 'voluntarias', 'caravanas', 'camisas'] : [];
-    const baseScope = scopeConta.length > 0 ? scopeConta : scopePerfil;
+    const scopePerfil = defaultOperationalScope(member.perfil);
+    const baseScope = hasExplicitScope ? scopeConta : scopePerfil;
 
     // A conta compartilhada de Gestão Operacional usa o nome selecionado para
     // identificar a pessoa física. Nesse caso o alias da pessoa restringe a
@@ -68,7 +71,7 @@ return (async (req: Request): Promise<Response> => {
     // Na conta compartilhada, o alias NUNCA pode ampliar o escopo cadastrado da
     // conta. Ele apenas restringe. Ex.: conta = ['camisas'] + Dulce = ['camisas'];
     // selecionar Paulo/Thalita não concede inscrições/caravanas nessa conta.
-    let operacoes_permitidas: string[] = isSharedOperationalAccount && scopePersona.length > 0
+    let operacoes_permitidas: string[] = isSharedOperationalAccount
       ? scopePersona.filter((op: string) => baseScope.includes(op))
       : baseScope;
     let caravana_ids_permitidas: string[] = [];

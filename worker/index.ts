@@ -1,6 +1,6 @@
 import type { StatusCode } from "hono/utils/http-status";
 import { domainMutation } from "./runtime/domain";
-import { Hono } from "hono";
+import { Hono, type Handler } from "hono";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 import {
   database,
@@ -33,6 +33,8 @@ import { configValue } from "./runtime/providers";
 import { secureEqual, sha256 } from "./runtime/vault";
 import { health } from "./runtime/health";
 import { tick, consume, initializeWorkflows } from "./runtime/jobs";
+import { migrateLegacyPassword, readLoginBody } from "./runtime/legacy-password";
+import { uazapiDelivery } from "./runtime/uazapi-webhook";
 type Bindings = {
   Bindings: RuntimeEnv;
   Variables: { session: SessionContext; work: UnitOfWork };
@@ -98,17 +100,16 @@ app.use("/api/*", async (c, next) => {
     false,
     configValue(c.env, "TOKEN_ENCRYPTION_KEY"),
   );
-  let request = c.req.raw;
+  let authHeaders = c.req.raw.headers;
   const cookie = getCookie(c, "m31_session");
-  if (!request.headers.has("Authorization") && cookie) {
-    const headers = new Headers(request.headers);
-    headers.set("Authorization", `Bearer ${cookie}`);
-    request = new Request(request, { headers });
+  if (!authHeaders.has("Authorization") && cookie) {
+    authHeaders = new Headers(authHeaders);
+    authHeaders.set("Authorization", `Bearer ${cookie}`);
   }
   let user = null;
   if (!c.req.path.startsWith("/api/webhooks/")) {
     try {
-      user = await authenticate(request, db, work);
+      user = await authenticate({ headers: authHeaders }, db, work);
     } catch (error) {
       if (cookie && !c.req.raw.headers.has("Authorization"))
         deleteCookie(c, "m31_session", { path: "/api" });
@@ -166,6 +167,10 @@ app.get("/api/auth/me", (c) => {
   const session = c.get("session");
   requireUser(session.user);
   return c.json(session.user);
+});
+app.post("/api/auth/legacy-password", async (c) => {
+  await migrateLegacyPassword(c.get("session"), await readLoginBody(c.req.raw), c.req.header("CF-Connecting-IP") || "local");
+  return c.json({ success: true });
 });
 app.post("/api/auth/logout", (c) => {
   deleteCookie(c, "m31_session", { path: "/api" });
@@ -417,11 +422,12 @@ app.post("/api/admin/workflows/:id", async (c) => {
   if (error) throw new ApiError(503, "Não foi possível alterar job.");
   return c.json({ success: true });
 });
-app.post("/api/webhooks/:provider", async (c) => {
+const receiveWebhook: Handler<Bindings> = async (c) => {
   const session = c.get("session");
-  const provider = c.req.param("provider");
+  const provider = c.req.param("provider") || "uazapi";
   const body = (await c.req.json()) as JsonRecord;
-  const work = c.get("work");
+  if (c.req.param("event") && provider !== "uazapi")
+    throw new ApiError(404, "Webhook inexistente.");
   if (provider === "asaas") {
     const expected = configValue(c.env, "ASAAS_WEBHOOK_TOKEN") || "";
     if (
@@ -457,21 +463,20 @@ app.post("/api/webhooks/:provider", async (c) => {
     return c.json({ received: true, event_id: body.id, duplicate });
   }
   if (provider === "uazapi") {
-    const expected = configValue(c.env, "UAZAPI_WEBHOOK_TOKEN") || "";
-    if (
-      !expected ||
-      !(await secureEqual(c.req.header("x-webhook-token") || "", expected))
-    )
-      throw new ApiError(401, "Webhook não autorizado.");
-    const id = body.messageid || body.id || body.message?.id;
-    if (!id) throw new ApiError(400, "ID da mensagem obrigatório.");
+    const delivery = await uazapiDelivery(
+      body,
+      c.req.header("x-webhook-token"),
+      configValue(c.env, "UAZAPI_TOKEN") || "",
+      configValue(c.env, "UAZAPI_WEBHOOK_TOKEN") || "",
+      c.req.param("event"),
+    );
     const { error } = await session.db
       .from("m31_outbox")
       .upsert(
         {
-          dedup_key: `uazapi:${id}:${body.event || body.status || "message"}`,
+          dedup_key: `uazapi:${delivery.id}:${delivery.event}`,
           function_name: "m31ReceberWebhookUazapi",
-          args: body,
+          args: delivery.args,
         },
         { onConflict: "dedup_key", ignoreDuplicates: true },
       );
@@ -479,7 +484,10 @@ app.post("/api/webhooks/:provider", async (c) => {
     return c.json({ received: true });
   }
   throw new ApiError(404, "Webhook inexistente.");
-});
+};
+app.post("/api/webhooks/:provider", receiveWebhook);
+app.post("/api/webhooks/uazapi/:event", receiveWebhook);
+app.post("/api/webhooks/uazapi/:event/:messageType", receiveWebhook);
 app.all("/api/*", (c) => c.json({ error: "Endpoint não encontrado." }, 404));
 app.all("*", (c) => c.env.ASSETS.fetch(c.req.raw));
 export default {

@@ -12,6 +12,20 @@ const TICKET_CARD_OPTIONS = Object.freeze({
   4: { total: 151.95 },
   5: { total: 152.79 },
 });
+const CAMISA_PRECO_UNITARIO = 65;
+const CAMISA_PRECO_PROMOCIONAL = 60;
+const CAMISA_MINIMO_PROMOCAO = 2;
+const CAMISA_MAX_UNIDADES = 10;
+function calcularCamisas(quantidade) {
+  const qtd = Math.max(0, Number(quantidade) || 0);
+  const unitario = qtd >= CAMISA_MINIMO_PROMOCAO ? CAMISA_PRECO_PROMOCIONAL : CAMISA_PRECO_UNITARIO;
+  return {
+    quantidade: qtd,
+    unitario,
+    subtotal: Math.round(qtd * unitario * 100) / 100,
+    desconto: Math.round(qtd * (CAMISA_PRECO_UNITARIO - unitario) * 100) / 100,
+  };
+}
 function ticketQuote(baseTotal, paymentMethod, installments) {
   if (paymentMethod === 'PIX') return { total: Math.round(Number(baseTotal) * 100) / 100, installmentValue: Number(baseTotal), installments: 1 };
   const option = TICKET_CARD_OPTIONS[Number(installments)];
@@ -158,7 +172,7 @@ return (async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const body = await req.json();
-    let { nome, email, whatsapp, cpf, cidade, estado, tipo, area_voluntario, caravana_id, caravana_nome, cupom_codigo, faz_parte_igreja, nome_igreja, isGift, presenteado_whatsapp, presenteado_nome, presenteado_email, inscricao_id, modelo_camisa, tamanho_camisa } = body;
+    let { nome, email, whatsapp, cpf, cidade, estado, tipo, area_voluntario, caravana_id, caravana_nome, cupom_codigo, faz_parte_igreja, nome_igreja, isGift, presenteado_whatsapp, presenteado_nome, presenteado_email, inscricao_id, modelo_camisa, tamanho_camisa, camisas_selecionadas } = body;
 
     const ASAAS_KEY = config("ASAAS_API_KEY");
     const ASAAS_BASE = "__ASAAS_API__";
@@ -189,7 +203,8 @@ return (async (req) => {
     let codigo_inscricao_usar = codigo_inscricao;
     let inscricao;
     let loteAtivo;
-    let camisaSelecionada: null | { modelo: string; tamanho: string; valor: number } = null;
+    let camisaItens: { modelo: string; cor: string | null; tamanho: string }[] = [];
+    let camisaResumo = calcularCamisas(0);
 
     // ═══ DEDUP PRIMARY: buscar inscrição existente por dedup_key ═══
     // RODA SEMPRE — independe de inscricao_id vindo do frontend.
@@ -542,28 +557,48 @@ return (async (req) => {
       }
     }
 
-    // Validar order bump de camisa SOMENTE no fluxo público geral.
-    // Nunca confiar em preço vindo do cliente: modelo, tamanho, preço e estoque vêm do servidor.
-    const modeloCamisa = String(modelo_camisa || '').trim().toLowerCase();
-    const tamanhoCamisa = String(tamanho_camisa || '').trim().toUpperCase();
-    if (modeloCamisa || tamanhoCamisa) {
+    // Validar Order Bump de camisa SOMENTE no fluxo público geral.
+    // Preço vem do servidor; tipo, cor e tamanho precisam existir no catálogo ativo.
+    const unidadesRecebidas = Array.isArray(camisas_selecionadas) ? camisas_selecionadas : [];
+    if (unidadesRecebidas.length === 0 && (modelo_camisa || tamanho_camisa)) {
+      unidadesRecebidas.push({ modelo: modelo_camisa, cor: body.cor_camisa, tamanho: tamanho_camisa });
+    }
+    if (unidadesRecebidas.length > 0) {
       if (inscricao?.asaas_charge_url) {
         return Response.json({ error: 'Camisa não pode ser adicionada a um checkout já existente. Conclua ou regularize o checkout atual.' }, { status: 409 });
       }
-      if (!modeloCamisa || !tamanhoCamisa) {
-        return Response.json({ error: 'Selecione modelo e tamanho da camisa.' }, { status: 400 });
+      if (unidadesRecebidas.length > CAMISA_MAX_UNIDADES) {
+        return Response.json({ error: `Limite de ${CAMISA_MAX_UNIDADES} camisas por inscrição.` }, { status: 400 });
       }
-      const cfg = (await base44.asServiceRole.entities.EventoM31Config.list('-created_date', 1))[0] || {};
-      const modelosAtivos = Array.isArray(cfg.camisas_modelos_ativos) ? cfg.camisas_modelos_ativos : [];
-      const precoCamisa = Number(cfg.camisas_preco_promocional || 0);
-      if (cfg.camisas_order_bump_ativo !== true || !modelosAtivos.includes(modeloCamisa) || precoCamisa <= 0) {
-        return Response.json({ error: 'Modelo de camisa indisponível para venda.' }, { status: 409 });
+      const produtosAtivos = await base44.asServiceRole.entities.M31ProdutoCamisa.filter({ ativo: true });
+      const catalogo = new Map<string, any[]>();
+      for (const produto of produtosAtivos || []) {
+        if (!produto?.modelo) continue;
+        if (!catalogo.has(produto.modelo)) catalogo.set(produto.modelo, []);
+        catalogo.get(produto.modelo)!.push(produto);
       }
-      const estoque = (await base44.asServiceRole.entities.EventoM31CamisaEstoque.filter({ modelo: modeloCamisa, tamanho: tamanhoCamisa }, '-created_date', 1))[0];
-      if (!estoque || Number(estoque.quantidade || 0) <= 0) {
-        return Response.json({ error: 'Este tamanho acabou de esgotar. Escolha outra opção.' }, { status: 409 });
+      for (const unidade of unidadesRecebidas) {
+        const modelo = String(unidade?.modelo || '').trim().toLowerCase();
+        const tamanho = String(unidade?.tamanho || '').trim().toUpperCase();
+        const lista = catalogo.get(modelo);
+        if (!lista?.length) return Response.json({ error: 'Camisa indisponível para venda.' }, { status: 409 });
+        const tamanhosValidos = new Set<string>();
+        for (const produto of lista) {
+          (produto.tamanhos || []).forEach((item: string) => tamanhosValidos.add(String(item).toUpperCase()));
+        }
+        if (!tamanho || !tamanhosValidos.has(tamanho)) {
+          return Response.json({ error: 'Selecione um tamanho válido para a camisa.' }, { status: 400 });
+        }
+        const coresDisponiveis = lista.filter((produto) => produto.cor).map((produto) => String(produto.cor).trim().toLowerCase());
+        let cor = String(unidade?.cor || '').trim().toLowerCase();
+        if (coresDisponiveis.length > 1) {
+          if (!cor || !coresDisponiveis.includes(cor)) return Response.json({ error: 'Selecione a cor da camisa.' }, { status: 400 });
+        } else {
+          cor = coresDisponiveis[0] || '';
+        }
+        camisaItens.push({ modelo, cor: cor || null, tamanho });
       }
-      camisaSelecionada = { modelo: modeloCamisa, tamanho: tamanhoCamisa, valor: precoCamisa };
+      camisaResumo = calcularCamisas(camisaItens.length);
     }
 
     // Cupom promocional reutilizável. O backend é a única autoridade do preço.
@@ -578,16 +613,24 @@ return (async (req) => {
     const quantidadeIngressos = isGift && presenteado_whatsapp ? 2 : 1;
     const valorTotalIngresso = valorFinalIngressoUnit * quantidadeIngressos;
     const descontoCupom = cupomAplicado ? Math.round((valorOriginalIngressoUnit - valorFinalIngressoUnit) * quantidadeIngressos * 100) / 100 : 0;
-    const valorTotalCompra = Math.round((valorTotalIngresso + (camisaSelecionada?.valor || 0)) * 100) / 100;
+    const valorTotalCompra = Math.round((valorTotalIngresso + camisaResumo.subtotal) * 100) / 100;
+    const camisasPersistidas = camisaItens.map((unidade) => ({
+      modelo: unidade.modelo,
+      cor: unidade.cor,
+      tamanho: unidade.tamanho,
+      preco_unitario: camisaResumo.unitario,
+      valor: camisaResumo.unitario,
+      entregue: false,
+    }));
     const quote = ticketQuote(valorTotalCompra, paymentMethod, installmentCount);
 
     await base44.asServiceRole.entities.EventoM31Inscricao.update(inscricao.id, {
-      comprou_camisa: Boolean(camisaSelecionada),
-      modelo_camisa: camisaSelecionada?.modelo || null,
-      tamanho_camisa: camisaSelecionada?.tamanho || null,
-      camisa_valor: camisaSelecionada?.valor || 0,
-      camisa_status: camisaSelecionada ? 'pagamento_pendente' : null,
-      camisas: camisaSelecionada ? [{ modelo: camisaSelecionada.modelo, tamanho: camisaSelecionada.tamanho, valor: camisaSelecionada.valor, entregue: false }] : [],
+      comprou_camisa: camisaItens.length > 0,
+      modelo_camisa: camisaItens.length === 1 ? camisaItens[0].modelo : null,
+      tamanho_camisa: camisaItens.length === 1 ? camisaItens[0].tamanho : null,
+      camisa_valor: camisaResumo.subtotal,
+      camisa_status: camisaItens.length > 0 ? 'pagamento_pendente' : null,
+      camisas: camisasPersistidas,
       cupom_usado: cupomAplicado ? cupomNormalizado : null,
       cupom_valor_original: cupomAplicado ? valorOriginalIngressoUnit : null,
       cupom_desconto: cupomAplicado ? descontoCupom : null,
@@ -720,12 +763,12 @@ return (async (req) => {
       valor_pago: quote.total,
       payment_method: paymentMethod,
       installment_count: installmentCount,
-      comprou_camisa: Boolean(camisaSelecionada),
-      modelo_camisa: camisaSelecionada?.modelo || null,
-      tamanho_camisa: camisaSelecionada?.tamanho || null,
-      camisa_valor: camisaSelecionada?.valor || 0,
-      camisa_status: camisaSelecionada ? 'pagamento_pendente' : null,
-      camisas: camisaSelecionada ? [{ modelo: camisaSelecionada.modelo, tamanho: camisaSelecionada.tamanho, valor: camisaSelecionada.valor, entregue: false }] : [],
+      comprou_camisa: camisaItens.length > 0,
+      modelo_camisa: camisaItens.length === 1 ? camisaItens[0].modelo : null,
+      tamanho_camisa: camisaItens.length === 1 ? camisaItens[0].tamanho : null,
+      camisa_valor: camisaResumo.subtotal,
+      camisa_status: camisaItens.length > 0 ? 'pagamento_pendente' : null,
+      camisas: camisasPersistidas,
       faz_parte_igreja: faz_parte_igreja ?? null,
       nome_igreja: nome_igreja || '',
       dedup_key: inscricao.dedup_key || dedupKey,

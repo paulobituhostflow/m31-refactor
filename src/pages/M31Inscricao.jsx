@@ -9,7 +9,10 @@ import GiftTicketToggle from '@/components/m31/GiftTicketToggle';
 import GiftConfirmScreen from '@/components/m31/GiftConfirmScreen';
 import InscricaoRecuperadaBanner from '@/components/m31/forms/InscricaoRecuperadaBanner';
 import ShirtOrderBump from '@/components/m31/ShirtOrderBump';
+import ShirtOrderSummary from '@/components/m31/ShirtOrderSummary';
+import { calcularCamisas, validarUnidadesCamisa, rotuloUnidade } from '@/lib/m31CamisaPrecos';
 import { alertaTelefone } from '@/lib/m31Normalizar';
+import { resolverDestinoPagamento, navegarParaPagamento } from '@/lib/m31PagamentoRedirect';
 import { usePublicFormConfig } from '@/hooks/usePublicFormConfig';
 import ExtrasFields from '@/components/m31/forms/ExtrasFields';
 import { serializarExtras } from '@/components/m31/builder/publicFormsCatalog';
@@ -76,16 +79,29 @@ export default function M31Inscricao() {
     }
   }, []);
 
-  // Carregar lote ativo na inicialização
+  // Preço vigente do ingresso. A leitura direta de EventoM31Lote é negada no
+  // contexto anônimo (403); o valor vem da função pública somente-leitura
+  // m31PrecoInscricaoPublico, que devolve apenas o lote ativo { id, nome, valor }.
+  // Sem lote ou sem valor positivo a tela mostra erro de configuração — nunca R$ 0,00.
   useEffect(() => {
-    base44.entities.EventoM31Lote.filter({ ativo: true }, '-ordem', 1)
-      .then(lotes => {
-        if (lotes.length > 0) {
-          setLoteAtivo(lotes[0]);
-          setTotalValue(lotes[0].valor);
-        }
-      })
-      .catch(() => {});
+    let ativo = true;
+    const aplicarPreco = (dados) => {
+      if (!ativo) return;
+      const valor = Number(dados?.valor);
+      if (!dados || !Number.isFinite(valor) || valor <= 0) {
+        setLoteAtivo(null);
+        setPrecoEstado('erro');
+        return;
+      }
+      setLoteAtivo({ id: dados.id, nome: dados.nome, valor });
+      setTotalValue(valor);
+      setPrecoEstado('ok');
+    };
+    base44.functions.invoke('m31PrecoInscricaoPublico', {})
+      .then(res => aplicarPreco(res?.data))
+      .catch(e => aplicarPreco(e?.response?.data))
+      .finally(() => { if (ativo) setPrecoEstado(e => (e === 'ok' ? 'ok' : 'erro')); });
+    return () => { ativo = false; };
   }, []);
 
   // FORÇA BRUTA: Light mode no DOM
@@ -138,7 +154,10 @@ export default function M31Inscricao() {
   const [giftNome, setGiftNome] = useState('');
   const [giftEmail, setGiftEmail] = useState('');
   const [loteAtivo, setLoteAtivo] = useState(null);
+  // Destino do GiftTicketToggle; o total exibido é derivado do lote vigente.
   const [totalValue, setTotalValue] = useState(0);
+  // 'carregando' | 'ok' | 'erro' — governa a exibição do preço vigente.
+  const [precoEstado, setPrecoEstado] = useState('carregando');
   const [paymentMethod, setPaymentMethod] = useState('PIX');
   const [installments, setInstallments] = useState(1);
   const [isResgate, setIsResgate] = useState(false);
@@ -146,7 +165,8 @@ export default function M31Inscricao() {
   const [existingInscricao, setExistingInscricao] = useState(null);
   const [checkedPhone, setCheckedPhone] = useState('');
   const [shirtOffer, setShirtOffer] = useState(null);
-  const [shirtSelection, setShirtSelection] = useState({ modelo: '', tamanho: '' });
+  const [shirtEnabled, setShirtEnabled] = useState(false);
+  const [shirtUnits, setShirtUnits] = useState([]);
   const [cupomInput, setCupomInput] = useState('');
   const [cupomAplicado, setCupomAplicado] = useState('');
   const [cupomErro, setCupomErro] = useState('');
@@ -297,6 +317,7 @@ export default function M31Inscricao() {
     if (!existingInscricao?.email && (!form.email.trim() || !form.email.includes('@'))) return 'Informe um e-mail válido.';
     // Assistivo: só bloqueia contato impossível. Formato incomum segue com alerta.
     if (wppDigits.length < 8) return 'Informe seu WhatsApp com DDD. Ex.: (81) 99999-9999';
+    if (!precoDisponivel) return 'Não conseguimos carregar o valor vigente da inscrição. Recarregue a página; se persistir, fale com o suporte.';
     if (form.cpf.replace(/\D/g,'').length !== 11) return 'CPF deve ter 11 dígitos.';
     if (campo('cidade').visivel && campo('cidade').obrigatorio && !form.cidade.trim()) return 'Informe sua cidade.';
     if (campo('estado').visivel && campo('estado').obrigatorio && !form.estado) return 'Selecione seu estado.';
@@ -307,8 +328,21 @@ export default function M31Inscricao() {
     }
     if (isGift && (!giftNome.trim() || giftNome.trim().split(/\s+/).length < 2)) return 'Informe o nome completo da pessoa presenteada.';
     if (isGift && giftWhatsapp.replace(/\D/g,'').length < 10) return 'Informe o WhatsApp da pessoa presenteada.';
-    if ((shirtSelection.modelo && !shirtSelection.tamanho) || (!shirtSelection.modelo && shirtSelection.tamanho)) return 'Selecione o modelo e o tamanho da camisa.';
+    if (shirtEnabled) {
+      const erroCamisa = validarUnidadesCamisa(shirtUnits, shirtOffer?.tipos || []);
+      if (erroCamisa) return erroCamisa;
+    }
     return null;
+  }
+
+  // Gravação secundária (campos personalizados → observações do registro).
+  // Nunca bloqueia a ida ao pagamento: dispara em paralelo e falha em silêncio.
+  function gravarExtras(idInscricao) {
+    const serialExtras = serializarExtras(extras, valoresExtras);
+    if (!serialExtras || !idInscricao) return Promise.resolve();
+    const obsAtual = existingInscricao?.observacoes || '';
+    const obsNova = [obsAtual, serialExtras].filter(Boolean).join(' | ');
+    return base44.entities.EventoM31Inscricao.update(idInscricao, { observacoes: obsNova }).catch(() => {});
   }
 
   async function handleSubmit() {
@@ -365,23 +399,28 @@ export default function M31Inscricao() {
        presenteado_nome: isGift ? giftNome.trim() : null,
        presenteado_email: isGift ? giftEmail.trim().toLowerCase() : null,
        inscricao_id: existingInscricao?.id || intencao?.inscricao_id || leadId,
-       modelo_camisa: shirtSelection.modelo || null,
-       tamanho_camisa: shirtSelection.tamanho || null,
+       camisas_selecionadas: shirtEnabled
+         ? shirtUnits.map(u => ({ modelo: u.modelo, cor: u.cor || null, tamanho: u.tamanho }))
+         : [],
        cupom_codigo: cupomAplicado || null,
        payment_method: paymentMethod,
        installments,
       });
-      if (res.data?.payment_url) setPayUrl(res.data.payment_url);
-      await registrarIntencao('checkout_criado', { ultima_acao: 'checkout_criado' });
-      // Campos personalizados → observações do registro da inscrita (payload oficial intocado).
-      const serialExtras = serializarExtras(extras, valoresExtras);
-      const idInscricao = existingInscricao?.id || intencao?.inscricao_id || leadId;
-      if (serialExtras && idInscricao) {
-        const obsAtual = existingInscricao?.observacoes || '';
-        const obsNova = [obsAtual, serialExtras].filter(Boolean).join(' | ');
-        try { await base44.entities.EventoM31Inscricao.update(idInscricao, { observacoes: obsNova }); } catch (_) {}
+      // ── PORTÃO DE SAÍDA: sem link HTTPS do Asaas não há sucesso nem
+      // navegação. A tela mostra erro claro em vez de confirmar sem link.
+      const destino = resolverDestinoPagamento(res);
+      if (!destino.url) {
+        setError(destino.erro);
+        return;
       }
+      setPayUrl(destino.url);
       setSuccess(true);
+      // Telemetria e gravação de extras são SECUNDÁRIAS: disparam sem await,
+      // para nunca impedirem a ida ao pagamento.
+      void registrarIntencao('checkout_criado', { ultima_acao: 'checkout_criado' });
+      void gravarExtras(existingInscricao?.id || intencao?.inscricao_id || leadId);
+      // Navegação imediata, na MESMA aba.
+      navegarParaPagamento(destino.url);
     } catch (e) {
       const status = e?.response?.status || 0;
       const msg = e?.response?.data?.error || e?.message || '';
@@ -417,15 +456,21 @@ export default function M31Inscricao() {
     <svg className="m31-ds-input-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
   );
 
-  const shirtPrice = shirtSelection.modelo && shirtSelection.tamanho ? Number(shirtOffer?.preco || 0) : 0;
-  const loteValorReal = Number(loteAtivo?.valor || totalValue || 0);
+  const camisasCompletas = shirtEnabled ? shirtUnits.filter(u => u.modelo && u.tamanho) : [];
+  const resumoCamisas = calcularCamisas(camisasCompletas.length);
+  const shirtSubtotal = resumoCamisas.subtotal;
+  // Preço sempre derivado do lote vigente. Sem valor positivo não há preço:
+  // a tela informa a indisponibilidade em vez de exibir R$ 0,00.
+  const loteValorReal = Number(loteAtivo?.valor || 0);
+  const precoDisponivel = precoEstado === 'ok' && loteValorReal > 0;
   const ingressoUnitario = cupomAplicado === 'ESPOSADELGND' ? 110 : loteValorReal;
   const qtdIngressosDisplay = isGift && giftWhatsapp.replace(/\D/g,'').length >= 10 ? 2 : 1;
   const ingressoTotalDisplay = ingressoUnitario * qtdIngressosDisplay;
   const economiaCupom = cupomAplicado === 'ESPOSADELGND' ? Math.max(0, (loteValorReal - 110) * qtdIngressosDisplay) : 0;
-  const displayTotalValue = ingressoTotalDisplay + shirtPrice;
-  const precoAvista = Math.round(displayTotalValue);
-  const precoParcela = (displayTotalValue / 2).toFixed(2).replace('.', ',');
+  const displayTotalValue = ingressoTotalDisplay + shirtSubtotal;
+  // "Investimento" anuncia sempre o INGRESSO vigente (lote, cupom ou presente),
+  // nunca o total com camisas — as camisas ficam discriminadas no resumo do pedido.
+  const precoAvista = Math.round(ingressoTotalDisplay);
   const ticketCardBaseOptions = { 1: 144.84, 2: 147.47, 3: 149.19, 4: 151.95, 5: 152.79 };
   const ticketCardTotal = paymentMethod === 'CREDIT_CARD'
     ? Number((ticketCardBaseOptions[installments] * (displayTotalValue / 139)).toFixed(2))
@@ -466,9 +511,17 @@ export default function M31Inscricao() {
           <div className="m31-ds-invest">
             <div className="m31-ds-invest-label">Investimento</div>
             <div className="m31-ds-invest-row">
-              <div className="m31-ds-invest-value"><span className="currency">R$</span>{precoAvista}</div>
+              <div className="m31-ds-invest-value">
+                {precoDisponivel
+                  ? <><span className="currency">R$</span>{precoAvista}</>
+                  : <span style={{ fontSize: 20, fontWeight: 600, opacity: 0.7 }}>
+                      {precoEstado === 'carregando' ? 'Carregando valor…' : 'Valor indisponível'}
+                    </span>}
+              </div>
               <div className="m31-ds-invest-sub">
-                {isGift ? 'Sua inscrição + 1 presente' : `ou 2× de R$${precoParcela}`}
+                {!precoDisponivel
+                  ? (precoEstado === 'carregando' ? 'Buscando o valor vigente do lote' : 'Não foi possível carregar o valor agora')
+                  : isGift ? 'Sua inscrição + 1 presente' : null}
               </div>
             </div>
           </div>
@@ -487,9 +540,17 @@ export default function M31Inscricao() {
           <div className="m31-ds-mh-top">
             <div className="m31-ds-mh-logo"><M31Logo size="lg" /></div>
             <div className="m31-ds-mh-price">
-              <div className="m31-ds-mh-price-value"><span className="currency">R$</span>{precoAvista}</div>
+              <div className="m31-ds-mh-price-value">
+                {precoDisponivel
+                  ? <><span className="currency">R$</span>{precoAvista}</>
+                  : <span style={{ fontSize: 16, fontWeight: 600, opacity: 0.7 }}>
+                      {precoEstado === 'carregando' ? 'Carregando…' : 'Valor indisponível'}
+                    </span>}
+              </div>
               <div className="m31-ds-mh-price-sub">
-                {isGift ? 'inscrição + 1 presente' : `ou 2× de R$${precoParcela}`}
+                {!precoDisponivel
+                  ? 'Aguardando o valor vigente'
+                  : isGift ? 'inscrição + 1 presente' : null}
               </div>
             </div>
           </div>
@@ -533,6 +594,13 @@ export default function M31Inscricao() {
                         <div className="m31-ds-title">{T('aside_title_a')} <em>{T('aside_title_em')}</em></div>
                         <div className="m31-ds-subtitle">{T('form_sub')}</div>
                       </div>
+
+                      {precoEstado === 'erro' && (
+                        <div className="m31-ds-error" style={{ marginBottom: 16 }}>
+                          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                          Não conseguimos carregar o valor vigente da inscrição. Recarregue a página; se persistir, fale com o suporte antes de continuar.
+                        </div>
+                      )}
 
                       <InscricaoRecuperadaBanner inscricao={existingInscricao} />
 
@@ -669,13 +737,18 @@ export default function M31Inscricao() {
                       {!isResgate && !existingInscricao?.asaas_charge_url && (
                         <ShirtOrderBump
                           offer={shirtOffer}
-                          selection={shirtSelection}
-                          onChange={setShirtSelection}
+                          enabled={shirtEnabled}
+                          units={shirtUnits}
+                          onToggle={(ativo) => {
+                            setShirtEnabled(ativo);
+                            setShirtUnits(ativo ? (shirtUnits.length ? shirtUnits : [{ modelo: '', cor: '', tamanho: '' }]) : []);
+                          }}
+                          onChange={setShirtUnits}
                           disabled={loading}
                         />
                       )}
 
-                      {!isResgate && !existingInscricao?.asaas_charge_url && (
+                      {!isResgate && !existingInscricao?.asaas_charge_url && precoDisponivel && (
                         <section aria-label="Forma de pagamento" style={{ margin: '16px 0' }}>
                           <div className="m31-ds-section">Forma de pagamento</div>
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
@@ -709,11 +782,31 @@ export default function M31Inscricao() {
                               })}
                             </div>
                           )}
+                          {paymentMethod === 'CREDIT_CARD' && (
+                            <div style={{ marginTop: 12, padding: '12px 14px', border: '1px solid #E8E0D4', borderRadius: 10, background: '#FFFDFB', fontSize: 12.5, color: '#6F625A', lineHeight: 1.55 }}>
+                              <strong style={{ color: '#8B1F24' }}>Vai pagar com cartão?</strong> Abra esta página no Chrome ou no Safari, fora do Instagram. A validação de segurança do banco não funciona dentro do Instagram e aparece como “Verifique o recaptcha e tente novamente”.
+                            </div>
+                          )}
                         </section>
                       )}
 
                       <ExtrasFields extras={extras} valores={valoresExtras} disabled={loading}
                         onChange={(id, v) => setValoresExtras(s => ({ ...s, [id]: v }))} />
+
+                      {precoDisponivel && (
+                      <ShirtOrderSummary
+                        valorInscricao={ingressoTotalDisplay}
+                        itens={camisasCompletas.map(u => rotuloUnidade(u, shirtOffer?.tipos || []))}
+                        quantidade={resumoCamisas.quantidade}
+                        precoUnitario={resumoCamisas.unitario}
+                        subtotal={resumoCamisas.subtotal}
+                        desconto={resumoCamisas.desconto}
+                        total={paymentMethod === 'CREDIT_CARD' ? ticketCardTotal : displayTotalValue}
+                        notaPagamento={paymentMethod === 'CREDIT_CARD'
+                          ? `No cartão em ${installments}x de R$ ${ticketInstallmentValue.toFixed(2).replace('.', ',')}.`
+                          : 'Valor final cobrado no PIX.'}
+                      />
+                      )}
 
                       {error && (
                         <div className="m31-ds-error">
@@ -723,8 +816,12 @@ export default function M31Inscricao() {
                       )}
 
                       <div style={{ position: 'sticky', bottom: 0, zIndex: 20, padding: '12px 0 calc(12px + env(safe-area-inset-bottom))', background: 'rgba(255,255,255,.96)', backdropFilter: 'blur(8px)' }}>
-                        <button className="m31-ds-btn-primary" onClick={handleSubmit} disabled={loading}>
-                          {loading ? <>{T('btn_loading')}<span className="m31-ds-dots"><span/><span/><span/></span></> : paymentMethod === 'CREDIT_CARD' ? `Continuar com cartão em ${installments}x` : 'Continuar com PIX'}
+                        <button className="m31-ds-btn-primary" onClick={handleSubmit} disabled={loading || !precoDisponivel}>
+                          {loading
+                            ? <>{T('btn_loading')}<span className="m31-ds-dots"><span/><span/><span/></span></>
+                            : !precoDisponivel
+                              ? (precoEstado === 'carregando' ? 'Carregando o valor da inscrição…' : 'Valor da inscrição indisponível')
+                              : paymentMethod === 'CREDIT_CARD' ? `Continuar com cartão em ${installments}x` : 'Continuar com PIX'}
                         </button>
                       </div>
 

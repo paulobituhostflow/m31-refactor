@@ -1,6 +1,6 @@
 # M31: contexto da versão independente para o Codex do cliente
 
-Atualizado em 05/10/2026. Este documento explica a mudança da aplicação Base44 para a cópia independente e orienta a continuidade do trabalho.
+Atualizado em 08/10/2026. Este documento explica a mudança da aplicação Base44 para a cópia independente e orienta a continuidade do trabalho.
 
 ## 1. Ponto de partida e estado atual
 
@@ -11,15 +11,15 @@ O M31 existente foi copiado para funcionar com Cloudflare Workers e Supabase. A 
 | Repositório original, conectado ao Base44 | `paulobituhostflow/projeto-m31` |
 | Commit original usado como base | `c342879566d47d7b53ed8387687933e9c850085d` |
 | Novo repositório independente | [paulobituhostflow/m31-refactor](https://github.com/paulobituhostflow/m31-refactor) |
-| Branch publicada | `main` |
-| Commit da aplicação validada e implantada | `e87b2ec819b696abc13b2affd724ff7903b3eb94` |
-| Homologação publicada | [M31 staging](https://m31-staging.paulobituadv.workers.dev/m31) · [Login da gestão](https://m31-staging.paulobituadv.workers.dev/m31-login) |
+| Branch de migração | `feature/m31-data-migration`, PR #1 em rascunho |
+| Commit da publicação inicial | `e87b2ec819b696abc13b2affd724ff7903b3eb94` |
+| Homologação publicada | [M31 staging](https://m31-staging.paulobituadv.workers.dev/m31) · [Login da gestão](https://m31-staging.paulobituadv.workers.dev/gestao) |
 | Validação desse commit | [GitHub Actions — sucesso](https://github.com/paulobituhostflow/m31-refactor/actions/runs/37365521748) |
 | Deploy desse commit | [GitHub Actions — sucesso](https://github.com/paulobituhostflow/m31-refactor/actions/runs/37365531388) |
 
 O novo Git começou sem o histórico anterior. Para comparar as versões, use o commit original acima e o novo repositório: o ancestral do Git novo não representa o histórico da aplicação Base44.
 
-O código está no GitHub e a homologação está implantada em Cloudflare/Supabase na conta do cliente. Nenhum cliente real foi exportado ou importado, nenhum webhook de produção foi trocado e a aplicação Base44 permaneceu intacta. Alterações neste novo repositório não são sincronizadas com o Base44.
+O código está no GitHub e a homologação está implantada em Cloudflare/Supabase na conta do cliente. A cópia de staging recebeu 25.924 registros, nove contas registradas e dois convites pendentes em 06/10/2026. A transição de senha antiga no primeiro login foi implementada apenas em staging, preservando os perfis; consulte [MIGRATION.md](docs/MIGRATION.md) para estado, requisitos e limites. Nenhum webhook de produção foi trocado e a aplicação Base44 permaneceu intacta. Alterações neste novo repositório não são sincronizadas com o Base44.
 
 O escopo é o M31: inscrições, participantes, pagamentos, caravanas, Servir, camisas, cartinhas, check-in, portal, gestão, acessos, tarefas, logística, fornecedores e financeiro. Páginas de outros produtos ficaram fora; dependências compartilhadas necessárias ao M31 foram preservadas.
 
@@ -56,7 +56,7 @@ Layouts, navegação, URLs comerciais e regras existentes foram reaproveitados. 
 | `worker/runtime/` | Auth, permissões, domínio, persistência, providers, arquivos, jobs e saúde |
 | `worker/catalog/entities.json` | Catálogo das 69 entidades |
 | `worker/catalog/workflows.json` | Catálogo dos 33 workflows e configuração efetiva |
-| `supabase/migrations/` | Sete migrations: esquema, RLS, índices, relações, locks, jobs e arquivos |
+| `supabase/migrations/` | Nove migrations: schema/RLS, jobs, locks, arquivos, webhooks, relações, realtime, chaves duplicadas legadas e transição de senha |
 | `tools/migration/` | Exportação Base44 isolada, validação, importação e identidades |
 | `tools/google/authorize.mjs` | Autorização administrativa de Drive/Sheets |
 | `tests/` | Regressões, banco, API, migração, stack real local e Playwright |
@@ -180,19 +180,18 @@ Frontend: `http://127.0.0.1:5173`; API: `http://127.0.0.1:8787`; Supabase: `http
 
 O ambiente usado pelo autor foi isolado no SSD externo e encerrado ao final. [docs/LOCAL_VALIDATION.md](docs/LOCAL_VALIDATION.md) descreve aquela máquina; os caminhos absolutos de Colima/SSD não são requisitos para a máquina do cliente. Builds e testes de navegador devem rodar em sequência para evitar recargas do Worker durante os testes.
 
-## 8. Próxima etapa: homologação, dados e publicação
+## 8. Próxima etapa: integrações e corte de produção
 
-O código, as ferramentas e staging estão preparados. O ambiente de produção ainda precisa ser provisionado separadamente conforme [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+Em 08/10/2026, o Worker e o Supabase de produção foram provisionados. Staging e produção têm as nove migrations e filas separadas; o Worker de produção está publicado em [m31-production](https://m31-production.paulobituadv.workers.dev). A Action [37790353860](https://github.com/paulobituhostflow/m31-refactor/actions/runs/37790353860) passou por verify, migrations, deploy e smoke. O commit implantado `786d71e` está no PR #1 ainda aberto; não foi mesclado em `main`.
 
-1. Preservar o Supabase staging existente; criar um projeto separado para produção. Aplicar migrations nesse projeto, conferir buckets/RLS e configurar Auth, redirects, Google e SMTP.
-2. Preservar o Worker/filas staging; criar recursos separados para produção. Configurar domínio, `APP_ORIGIN`, secrets e environment GitHub com proteção de produção.
-3. Configurar providers por ambiente, mantendo Asaas sandbox e destinos de teste na homologação. Login Google e OAuth Drive/Sheets são configurações distintas.
-4. Criar/vincular as contas operacionais de homologação com permissões explícitas e validar os casos pendentes. Novos deploys continuam manuais; push em `main` só valida. As senhas do Base44 não funcionam automaticamente no Supabase.
-5. Fazer ensaio de migração em homologação com credenciais de leitura Base44. Validar manifesto, checksums, contagens, relações, arquivos, pagamentos e identidades.
-6. Planejar o corte aprovado: bloquear brevemente escritas/webhooks antigos, exportar snapshot final novo, importar e conferir antes de trocar domínio/endpoints.
-7. Ativar somente workflows recorrentes revisados, acompanhar filas/falhas e operar com os backups disponíveis.
+1. Completar a configuração/verificação de Supabase Auth, redirects, login Google e SMTP; obter as credenciais Google OAuth/Drive/Sheets que faltam.
+2. Cadastrar e validar os webhooks de Asaas e UAZAPI nos painéis dos providers para cada ambiente. As credenciais no Worker, por si só, não registram os webhooks.
+3. Manter `EXTERNAL_SIDE_EFFECTS=false` e `AUTOMATIONS_ENABLED=false` até validar cada provider e revisar workflows/destinos.
+4. Ensaiar a migração restante de dados Base44 em staging: manifesto, checksums, contagens, relações, arquivos, pagamentos e identidades.
+5. Planejar o corte aprovado: congelar brevemente escritas/webhooks antigos, gerar snapshot final, importar e conferir antes de trocar domínio/endpoints.
+6. Após validar dados e operação, aprovar a promoção do PR #1 para `main`, configurar domínio próprio e ativar somente workflows revisados.
 
-O deploy manual não cria filas nem aplica migrations. Esses pré-requisitos precisam existir antes da execução da Action.
+O workflow manual de deploy aplica migrations pendentes antes de publicar o Worker em produção. Os recursos das filas são provisionados separadamente; a publicação liga os bindings do consumer/producer às filas já criadas.
 
 O exportador está isolado em `tools/migration/` e usa credenciais próprias. O importador tem dry-run, retomada/idempotência e suprime eventos: importar dados não dispara mensagens, cobranças ou jobs. Nunca versione exports, chaves, links de recuperação ou credenciais. A leitura real de todas as entidades e arquivos privados no Base44 ainda precisa ser conferida.
 
@@ -204,7 +203,7 @@ O roteiro detalhado e os comandos estão em [docs/MIGRATION.md](docs/MIGRATION.m
 
 Leia este documento, [README.md](README.md), [ARCHITECTURE.md](docs/ARCHITECTURE.md), [VALIDATION.md](docs/VALIDATION.md), [DEPLOYMENT.md](docs/DEPLOYMENT.md) e [MIGRATION.md](docs/MIGRATION.md) antes de continuar. Use o inventário para localizar dependências de cada mudança.
 
-O relatório local registra a etapa anterior ao provisionamento. O estado atual está na seção 1 e em `docs/REMOTE_VALIDATION.md`: repositório publicado, CI/deploy aprovados, staging hospedado e sem dados reais migrados. Commits posteriores somente de documentação não alteram o commit da aplicação implantada.
+O relatório local registra a etapa anterior ao provisionamento. O estado atual está nas seções 1 e 8 e em `docs/REMOTE_VALIDATION.md`: staging tem dados migrados; produção tem schema e Worker implantados, mas ainda não recebeu dados reais nem teve webhooks registrados. O commit de produção está no PR #1 aberto. Commits posteriores somente de documentação não alteram o Worker implantado.
 
 Trabalhe no `m31-refactor`, confira a branch e preserve alterações locais. Não altere o repositório original conectado ao Base44, não reintroduza SDK/editor no runtime e não substitua os contratos da interface sem acompanhar seus consumidores. Preserve IDs, pagamentos, QR, autoria, histórico, permissões e isolamento dos ambientes.
 

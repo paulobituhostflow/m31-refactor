@@ -71,6 +71,7 @@ import f69 from "./functions/m31CorrigirGapsResetados/entry";
 import f70 from "./functions/m31CorrigirLeads/entry";
 import f71 from "./functions/m31CorrigirValoresAsaas/entry";
 import f72 from "./functions/m31CreatePayment/entry";
+import f203 from "./functions/m31PrecoInscricaoPublico/entry";
 import f73 from "./functions/m31CriarEdicao/entry";
 import f74 from "./functions/m31CruzarNomesVoluntarias/entry";
 import f75 from "./functions/m31DashboardSeguranca/entry";
@@ -275,6 +276,7 @@ export const handlers = {
  "m31CorrigirLeads": f70,
  "m31CorrigirValoresAsaas": f71,
  "m31CreatePayment": f72,
+ "m31PrecoInscricaoPublico": f203,
  "m31CriarEdicao": f73,
  "m31CruzarNomesVoluntarias": f74,
  "m31DashboardSeguranca": f75,
