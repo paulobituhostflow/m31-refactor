@@ -4,7 +4,7 @@ import { canOpenM31Panel } from '../src/lib/m31PanelAccess.js';
 import { resolvePasswordRecovery } from '../src/lib/m31PasswordRecovery.js';
 
 test('operational panel admits existing profiles while retaining sector and author separation', () => {
-  for (const profile of ['gestao_operacional', 'coordenador', 'coordenadora_geral', 'gestora_inscricoes', 'coordenacao_participantes', 'visualizacao']) {
+  for (const profile of ['gestao_operacional', 'coordenador', 'coordenadora_geral', 'gestora_inscricoes', 'coordenacao_participantes', 'visualizacao', 'intercessao_operacional']) {
     assert.equal(canOpenM31Panel({ role: 'user', membro: { ativo: true, perfil: profile } }, 'management'), true);
   }
   for (const profile of ['lider_setor', 'checkin', 'voluntario']) {

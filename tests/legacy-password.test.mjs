@@ -67,6 +67,7 @@ test('Supabase success skips migration; invalid credentials migrate and retry on
 test('home route separates management, administrator, sector and author; unknown/inactive profiles have no access', () => {
   const user = perfil => ({ role: 'user', membro: { ativo: true, perfil } });
   assert.equal(getM31HomeRoute(user('gestao_operacional')), '/m31-admin');
+  assert.equal(getM31HomeRoute(user('intercessao_operacional')), '/m31-admin');
   assert.equal(getM31HomeRoute(user('visualizacao')), '/m31-gestao-mobile');
   assert.equal(getM31HomeRoute(user('gestora_inscricoes')), '/m31-gestao-mobile');
   assert.equal(getM31HomeRoute({ role: 'admin' }), '/admin');

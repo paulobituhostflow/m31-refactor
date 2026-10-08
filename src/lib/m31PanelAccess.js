@@ -1,4 +1,4 @@
-const managementProfiles = ['gestao_operacional', 'coordenador', 'coordenadora_geral', 'gestora_inscricoes', 'coordenacao_participantes', 'visualizacao'];
+const managementProfiles = ['gestao_operacional', 'coordenador', 'coordenadora_geral', 'gestora_inscricoes', 'coordenacao_participantes', 'visualizacao', 'intercessao_operacional'];
 
 export function getM31HomeRoute(user) {
   if (user?.role === 'admin') return '/admin';

@@ -56,6 +56,7 @@ export function useM31Auth() {
   const isCheckin              = perfil === 'checkin';
   // Perfil de visualização (somente leitura): Home, Inscrições/Gestão e Automações
   const isVisualizacao         = perfil === 'visualizacao';
+  const isIntercessao          = perfil === 'intercessao_operacional';
 
   // ── Mapa de permissões ────────────────────────────────────
   const pode = {
@@ -80,6 +81,8 @@ export function useM31Auth() {
     // Voluntários
     verVoluntariosHub:  isCoordParticipantes || isGestaoOp || isVisualizacao,
     verVoluntarios:     isCoordParticipantes || isGestaoOp || isVisualizacao,
+    // Permissão dedicada: não concede acesso ao cadastro geral de voluntários.
+    verIntercessao:     isSuperAdmin || isIntercessao,
 
     // Leads / Mensagens
     verLeads:           isSuperAdmin || isCoordenador || isGestaoOp || perfil === 'coordenacao_participantes' || isCoordGeral,
@@ -140,6 +143,7 @@ export function useM31Auth() {
     isGestaoOp,
     isLiderSetor,
     isCheckin,
+    isIntercessao,
     isVoluntario: !!membro,
     pode,
     getDefaultTab,

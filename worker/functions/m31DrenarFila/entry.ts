@@ -62,13 +62,13 @@ function hojeRecife(): string {
 const COOLDOWNS_H: Record<string, number> = {
   BOAS_VINDAS: 72, RECUPERACAO_CHECKOUT: 24, QR_CODE: 12, GRUPO: 24,
   COBRANCA: 24, LEMBRETE: 12, CHECKIN: 24, PENDENCIA_CRITICA: 12, OPERACIONAL: 6,
-  CONFIRMACAO_COM_QR: 72, CONFIRMACAO_TEXTO: 72,
+  CONFIRMACAO_COM_QR: 72, CONFIRMACAO_TEXTO: 72, CONFIRMACAO_PRESENTEADA: 72,
   GRUPO_FOLLOWUP_1: 48, GRUPO_FOLLOWUP_2: 48, CAMPANHA_CAMISAS: 168,
 };
 const PRIORIDADES: Record<string, number> = {
   SUPORTE: 1, PENDENCIA_CRITICA: 1, RECUPERACAO_CHECKOUT: 2, GRUPO: 3, QR_CODE: 4,
   BOAS_VINDAS: 5, COBRANCA: 5, LEMBRETE: 6, CHECKIN: 6, CARTINHA_COPIA: 6, OPERACIONAL: 7,
-  CONFIRMACAO_COM_QR: 4, CONFIRMACAO_TEXTO: 4,
+  CONFIRMACAO_COM_QR: 4, CONFIRMACAO_TEXTO: 4, CONFIRMACAO_PRESENTEADA: 4,
   GRUPO_FOLLOWUP_1: 6, GRUPO_FOLLOWUP_2: 6, CAMPANHA_CAMISAS: 9,
 };
 const REGUA_ENCERRAMENTO: Record<string, string[]> = {
@@ -550,8 +550,8 @@ return (async (req) => {
         // TRAVA DE APROVAÇÃO MANUAL: NENHUM item é enviado sem aprovado_para_envio=true
         // (aprovação explícita do gestor no painel de filas). Vale para TODAS as automações.
         .filter((i: any) => i.aprovado_para_envio === true)
-        // MODO RETOMADA: CONFIRMACAO_COM_QR + LINK_DE_PAGAMENTO elegíveis (filas paralelas)
-        .filter((i: any) => !modoRetomada || i.automacao === 'CONFIRMACAO_COM_QR' || i.automacao === 'LINK_DE_PAGAMENTO')
+        // MODO RETOMADA: confirmações transacionais e suporte, além de links liberados.
+        .filter((i: any) => !modoRetomada || i.automacao === 'SUPORTE' || i.automacao === 'CONFIRMACAO_COM_QR' || i.automacao === 'CONFIRMACAO_PRESENTEADA' || i.automacao === 'LINK_DE_PAGAMENTO')
         // FREIO ANTI-MASSA (diretriz do gestor): a fileira de recuperação em lote
         // (LINK_DE_PAGAMENTO / RECUPERACAO_CHECKOUT) NÃO drena por padrão — disparar
         // dezenas dessas em sequência é o padrão que bloqueia o WhatsApp.
@@ -568,7 +568,7 @@ return (async (req) => {
       if (!modoRetomada) {
         const TRANSACIONAIS = new Set([
           'CONFIRMACAO_COM_QR','CONFIRMACAO_TEXTO','CONFIRMACAO_VOLUNTARIA',
-          'CONFIRMACAO_CARAVANA','CONFIRMACAO_CAMISA','OBRIGADO_COMPRA_CAMISA',
+          'CONFIRMACAO_CARAVANA','CONFIRMACAO_CAMISA','OBRIGADO_COMPRA_CAMISA','CONFIRMACAO_PRESENTEADA',
           'QR_CODE','BOAS_VINDAS'
         ]);
         const COMERCIAIS = new Set(['CAMPANHA_CAMISAS']);
@@ -593,7 +593,7 @@ return (async (req) => {
         const linksEnviadosHoje = control.cobrancas_enviadas || 0;
         const confirmacoesEnviadasHoje = control.boas_vindas_enviadas || 0;
         const links = elegiveis.filter((i: any) => i.automacao === 'LINK_DE_PAGAMENTO' && linksEnviadosHoje < LIMITE_POR_FILA);
-        const confirmacoes = elegiveis.filter((i: any) => i.automacao === 'CONFIRMACAO_COM_QR' && confirmacoesEnviadasHoje < LIMITE_POR_FILA);
+        const confirmacoes = elegiveis.filter((i: any) => (i.automacao === 'CONFIRMACAO_COM_QR' || i.automacao === 'CONFIRMACAO_PRESENTEADA') && confirmacoesEnviadasHoje < LIMITE_POR_FILA);
         // Alternância: consulta último tipo enviado para inverter a fila
         let ultimoTipo: string | null = null;
         try {

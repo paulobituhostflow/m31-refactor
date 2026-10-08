@@ -3,11 +3,12 @@
  * Busca EventPageConfig com event_key='m31_filhas_2026' e renderiza via M31LandingRenderer.
  * Se não houver config publicada, exibe a landing estática hardcoded como fallback.
  */
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import M31LandingRenderer from '@/components/m31/M31LandingRenderer';
 import { motion } from 'framer-motion';
-import { MapPin, Clock, Calendar, ChevronDown, Star, Sparkles, Play } from 'lucide-react';
+import { MapPin, Clock, Calendar, ChevronDown, Star, Heart, Sparkles, Users, Play } from 'lucide-react';
+import { CAMINHO_INSCRICAO } from '@/lib/m31LandingCta';
 
 const GlobalStyles = () => (
   <style>{`
@@ -17,10 +18,12 @@ const GlobalStyles = () => (
   `}</style>
 );
 
-const JU_PHOTO = "/assets/9a9b399c2_images-5.jpeg";
-const M31_LOGO = "/assets/a22f06b49_LOGOM31FILHAS1.png";
-const INSCRICAO_URL = "/m31-inscricao";
-const VIP_URL = import.meta.env.VITE_WHATSAPP_GROUP_INVITE || '';
+const JU_PHOTO = "https://media.base44.com/images/public/69d51b279da069f623e291a6/9a9b399c2_images-5.jpeg";
+const M31_LOGO = "https://media.base44.com/images/public/69d51b279da069f623e291a6/a22f06b49_LOGOM31FILHAS1.png";
+// Destino canônico da inscrição: o formulário dentro da própria aplicação.
+// O domínio institucional antigo (m31filhas.com.br) devolvia 404.
+const INSCRICAO_URL = CAMINHO_INSCRICAO;
+const VIP_URL = "https://chat.whatsapp.com/LDqMehzr4Pg07NyyaEiTam?mode=ems_qr_t";
 const YOUTUBE_ID = "zWuffZgykCk";
 
 function useCountdown() {
@@ -115,11 +118,11 @@ function StaticLanding() {
                 ✨ Quero me inscrever
               </button>
             </a>
-            {VIP_URL && <a href={VIP_URL} target="_blank" rel="noreferrer" className="flex-1">
+            <a href={VIP_URL} target="_blank" rel="noreferrer" className="flex-1">
               <button className="w-full bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold text-base rounded-2xl py-4 px-6 transition-all hover:scale-105">
                 💬 Grupo VIP
               </button>
-            </a>}
+            </a>
           </div>
         </motion.div>
         <motion.div animate={{ y: [0, 10, 0] }} transition={{ repeat: Infinity, duration: 2 }} className="absolute bottom-8 left-1/2 -translate-x-1/2 text-white/30">
@@ -258,9 +261,9 @@ function StaticLanding() {
                 </button>
               </a>
             </div>
-            {VIP_URL && <a href={VIP_URL} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-white/60 hover:text-white transition-colors text-sm">
+            <a href={VIP_URL} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-white/60 hover:text-white transition-colors text-sm">
               <span className="text-lg">💬</span> Entrar no grupo VIP do WhatsApp
-            </a>}
+            </a>
             <div className="mt-12 flex flex-col sm:flex-row justify-center gap-6 text-sm text-white/40">
               <div className="flex items-center justify-center gap-2"><Calendar className="w-4 h-4 text-rose-500" /><span>21 de novembro de 2026</span></div>
               <div className="flex items-center justify-center gap-2"><MapPin className="w-4 h-4 text-rose-500" /><span>Igreja RIO Prado · Recife-PE</span></div>

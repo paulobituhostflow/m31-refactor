@@ -2,14 +2,16 @@
  * M31LandingRenderer — renderiza blocos do EventPageConfig em modo LIVE
  * Mesma lógica do BuilderPreview mas sem simulação mobile — renderiza full-width real.
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { Play } from 'lucide-react';
 import { ensureV2 } from '@/components/m31/builder/blocksConfig';
+import { resolverDestinoInscricao } from '@/lib/m31LandingCta';
 
 // ── Block Renderers ────────────────────────────────────────────────────────
 
 function BlockHero({ data, brand, textColor }) {
-  const M31_LOGO = "/assets/a22f06b49_LOGOM31FILHAS1.png";
+  const M31_LOGO = "https://media.base44.com/images/public/69d51b279da069f623e291a6/a22f06b49_LOGOM31FILHAS1.png";
 
   return (
     <section
@@ -40,7 +42,7 @@ function BlockHero({ data, brand, textColor }) {
       )}
 
       {data.cta_text && data.cta_url && (
-        <a href={data.cta_url} target="_blank" rel="noreferrer" style={{ display: 'inline-block' }}>
+        <a href={resolverDestinoInscricao(data.cta_url)} target="_blank" rel="noreferrer" style={{ display: 'inline-block' }}>
           <button style={{
             background: `linear-gradient(135deg, ${brand}, #6B1220)`,
             color: '#fff', border: 'none', borderRadius: 16,
@@ -110,7 +112,7 @@ function BlockCTASection({ data, brand }) {
     }}>
       {data.title && <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 'clamp(24px, 4vw, 40px)', fontWeight: 700, color: '#fff', marginBottom: 12 }}>{data.title}</h2>}
       {data.subtitle && <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.75)', marginBottom: 32 }}>{data.subtitle}</p>}
-      <a href={data.button_url} target="_blank" rel="noreferrer" style={{ display: 'inline-block' }}>
+      <a href={resolverDestinoInscricao(data.button_url)} target="_blank" rel="noreferrer" style={{ display: 'inline-block' }}>
         <button style={{
           background: '#fff', color: brand, border: 'none', borderRadius: 16,
           padding: '18px 56px', fontSize: 16, fontWeight: 700, cursor: 'pointer',
@@ -226,7 +228,7 @@ function BlockVideo({ data, brand }) {
 
         {showBtn && data.delay_cta_text && data.delay_cta_url && (
           <div style={{ textAlign: 'center', marginTop: 24 }}>
-            <a href={data.delay_cta_url} target="_blank" rel="noreferrer">
+            <a href={resolverDestinoInscricao(data.delay_cta_url)} target="_blank" rel="noreferrer">
               <button style={{ background: `linear-gradient(135deg, ${brand}, #6B1220)`, color: '#fff', border: 'none', borderRadius: 14, padding: '16px 44px', fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
                 {data.delay_cta_text}
               </button>
@@ -239,7 +241,7 @@ function BlockVideo({ data, brand }) {
 }
 
 function BlockFooter({ data, brand }) {
-  const M31_LOGO = "/assets/a22f06b49_LOGOM31FILHAS1.png";
+  const M31_LOGO = "https://media.base44.com/images/public/69d51b279da069f623e291a6/a22f06b49_LOGOM31FILHAS1.png";
   return (
     <footer style={{ borderTop: '1px solid rgba(255,255,255,0.1)', padding: '40px 24px', textAlign: 'center' }}>
       <img src={M31_LOGO} alt="M31 Filhas" style={{ height: 48, margin: '0 auto 16px', opacity: 0.6, display: 'block' }} />

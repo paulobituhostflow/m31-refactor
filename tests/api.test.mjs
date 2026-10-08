@@ -36,6 +36,7 @@ for (const [index, profile] of [
   "visualizacao",
   "lider_setor",
   "cartinhas",
+  "intercessao_operacional",
 ].entries()) {
   const id = `00000000-0000-4000-a000-00000000000${index}`,
     email = `VALIDACAO.${profile}@example.invalid`;
@@ -186,6 +187,45 @@ test("HTTP API protects financial and pastoral fields and scopes sector leaders"
         "/entities/EventoM31Tarefa",
         { action: "update", id: "TASK_A", data: { status: "concluido" } },
         "visualizacao",
+      )
+    ).response.status,
+    403,
+  );
+});
+test("Intercessão role is limited to its audited panel and cannot access general records", async () => {
+  const report = await call(
+    "/functions/m31AuditoriaPagamentoIntercessao",
+    {},
+    "intercessao_operacional",
+  );
+  // No group config is seeded, so 404 confirms the request passed authorization.
+  assert.equal(report.response.status, 404);
+  assert.equal(
+    (
+      await call(
+        "/entities/EventoM31Inscricao",
+        { action: "list" },
+        "intercessao_operacional",
+      )
+    ).response.status,
+    403,
+  );
+  assert.equal(
+    (
+      await call(
+        "/entities/M31TransacaoFinanceira",
+        { action: "list" },
+        "intercessao_operacional",
+      )
+    ).response.status,
+    403,
+  );
+  assert.equal(
+    (
+      await call(
+        "/functions/m31ResumoOperacional",
+        {},
+        "intercessao_operacional",
       )
     ).response.status,
     403,

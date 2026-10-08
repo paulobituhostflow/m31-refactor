@@ -118,6 +118,7 @@ export default function M31Admin() {
     gestora_inscricoes: ['home', 'dashboard', 'operacoes', 'participantes', 'checkin', 'voluntarios', 'tarefas', 'logistica', 'cronograma', 'fornecedores'],
     coordenacao_participantes: ['home', 'dashboard', 'operacoes', 'participantes', 'checkin', 'voluntarios', 'tarefas', 'logistica', 'cronograma', 'fornecedores'],
     visualizacao: ['home', 'participantes', 'config_evento', 'voluntarios', 'importar', 'exportar', 'tarefas', 'logistica', 'cronograma', 'fornecedores', 'operacoes', 'financeiro', 'transacoes', 'contas', 'equipe', 'conciliacao'],
+    intercessao_operacional: ['intercessao'],
     voluntario: ['home', 'checkin', 'status_envios'],
   };
 
@@ -193,6 +194,7 @@ export default function M31Admin() {
     : membro?.perfil === 'coordenadora_geral' ? 'Coord. Geral'
     : membro?.perfil === 'gestora_inscricoes' ? 'Gestora de Inscrições'
     : membro?.perfil === 'coordenacao_participantes' ? 'Coord. Participantes'
+    : membro?.perfil === 'intercessao_operacional' ? 'Intercessão'
     : membro?.perfil === 'voluntario' ? 'Voluntária'
     : isSuperAdmin ? 'Super Admin' : '';
 

@@ -105,6 +105,7 @@
         "AUTOMATIONS_ENABLED": "false",
         "PROVIDER_MODE": "live",
         "ASAAS_BASE_URL": "https://api.asaas.com/v3",
+        "APP_ORIGIN": "https://m31-production.paulobituadv.workers.dev",
         "LEGACY_PASSWORD_MIGRATION_ENABLED": "false",
         "LEGACY_BASE44_APP_ID": "69d51b279da069f623e291a6"
       },
@@ -132,7 +133,9 @@
         "crons": [
           "* * * * *"
         ]
-      }
+      },
+      "workers_dev": true,
+      "preview_urls": false
     }
   }
 }

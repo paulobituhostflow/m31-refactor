@@ -435,6 +435,17 @@ async function processarConfirmacao(base44: any, evento: any, payment: any): Pro
     logger.error('[Worker] Erro ao buscar pagamento Asaas:', e.message);
   }
 
+  // Ignora evento de confirmação atrasado se o Asaas já cancelou ou estornou
+  // a cobrança. O estado atual do provider tem precedência sobre o evento antigo.
+  if (fullPayment?.id && (fullPayment.deleted === true
+      || !STATUS_CONFIRMADOS_ASAAS.includes(String(fullPayment.status || '').toUpperCase()))) {
+    return {
+      sucesso: true,
+      erro: `evento_desatualizado_provedor_${fullPayment.status || 'deletado'}`,
+      inscricao_id: inscricaoId,
+    };
+  }
+
   // ── Determinar valor total (nunca parcela) ──
   const billingType = (fullPayment?.billingType || payment.billingType || '').toUpperCase();
   const installmentCount = fullPayment?.installmentCount || payment.installmentCount || null;
@@ -533,6 +544,51 @@ async function processarConfirmacao(base44: any, evento: any, payment: any): Pro
     detalhe: `evento=${evento.event_id} | payment=${payment.id} | valor=${valorTotal} | data_financeira=${pagamentoConfirmadoEm || 'ausente'} | camisa=${camisaResult.status}`,
     origem: 'm31ProcessarWebhookAsaas',
   }).catch(() => {});
+
+  // Ao confirmar a compra da inscrição, liberar também a vaga presenteada.
+  // O valor fica na compradora; a convidada recebe cadastro próprio com valor 0.
+  let convidadaId: string | null = inscricao.presenteado_id || null;
+  if (!convidadaId) {
+    const reversas = await S.EventoM31Inscricao.filter({ presenteado_por_id: inscricaoId }, '-created_date', 1);
+    convidadaId = reversas[0]?.id || null;
+  }
+  if (convidadaId) {
+    try {
+      const convidada = (await S.EventoM31Inscricao.filter({ id: convidadaId }))[0];
+      if (convidada && !['aprovado', 'gratuito'].includes(convidada.status_pagamento)) {
+        await S.EventoM31Inscricao.update(convidada.id, {
+          status_pagamento: 'aprovado',
+          origem_pagamento: 'asaas',
+          valor_pago: 0,
+          lote: inscricao.lote || convidada.lote || null,
+          estado_jornada: 'pagamento_confirmado',
+          presenteado_por_id: convidada.presenteado_por_id || inscricaoId,
+          cadastro_pendente: true,
+          ...(pagamentoConfirmadoEm && !convidada.pagamento_confirmado_em
+            ? { pagamento_confirmado_em: pagamentoConfirmadoEm } : {}),
+        });
+        await S.M31InscricaoTimeline.create({
+          inscricao_id: convidada.id,
+          evento: 'presenteada_vaga_aprovada', etapa: 'webhook_worker', status: 'sucesso',
+          detalhe: `Vaga presenteada liberada pela compra ${inscricaoId} (payment=${payment.id}). Aguarda conclusão do cadastro para QR Code.`,
+          origem: 'm31ProcessarWebhookAsaas',
+        }).catch(() => {});
+      }
+      if (convidada) {
+        if (!inscricao.presenteado_id) {
+          await S.EventoM31Inscricao.update(inscricaoId, { presenteado_id: convidada.id }).catch(() => {});
+        }
+        base44.asServiceRole.functions
+          .invoke('m31EnviarLinkCadastroConvidada', {
+            inscricao_id: convidada.id,
+            pagador_nome: inscricao.nome || null,
+          })
+          .catch(() => {});
+      }
+    } catch (e: any) {
+      logger.error('[Worker] Falha ao liberar presenteada:', e?.message || e);
+    }
+  }
 
   // ── AVISO OPERACIONAL: nova voluntária confirmada → Edilândia (direto, imediato) ──
   // Espelho do padrão da Dulce: sem fila, sem janela; kill-switch e idempotência

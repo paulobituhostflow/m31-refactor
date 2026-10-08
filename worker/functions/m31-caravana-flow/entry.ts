@@ -5,10 +5,12 @@ export default async function handler(req: Request, context: HandlerContext): Pr
  const { client, config, fetch, logger } = context;
  const createClientFromRequest = (_req: Request) => client;
 // M31 Caravana — catálogo público seguro + captura de intenção + checkout
-// Valor promocional: R$ 97 por pessoa.
+// PIX R$ 97 por pessoa · cartão R$ 110 por pessoa (até 3x).
 // Regra operacional: nunca perder uma tentativa por falha técnica do checkout.
 
-const VALOR_POR_PESSOA = 97;
+const VALOR_PIX = 97;
+const VALOR_CARTAO = 110;
+const MAX_PARCELAS_CARTAO = 3;
 const ASAAS_BASE = '__ASAAS_API__';
 const ETAPA_RANK: Record<string, number> = {
   iniciou: 0,
@@ -164,7 +166,7 @@ async function criarOuAtualizarIntencao(S: any, body: any, caravana: any) {
     status_pagamento: 'pendente',
     estado_jornada: 'pendente',
     falha_tecnica: false,
-    valor_pago: VALOR_POR_PESSOA,
+    valor_pago: VALOR_PIX,
     lote: 'lote_1',
     retomada_token: crypto.randomUUID(),
     recovery_attempts: 0,
@@ -189,13 +191,18 @@ return (async (req) => {
     const S = base44.asServiceRole.entities;
     const body = await req.json().catch(() => ({}));
     const action = String(body?.action || 'checkout');
-    // BOUNDED: somente novas cobranças deste fluxo de Caravana são PIX.
-    // Parâmetros de pagamento vindos do cliente nunca podem ampliar esta regra.
+    // O servidor valida modalidade e parcelas; preço nunca vem do cliente.
     if (action === 'checkout') {
       const requestedMethod = String(body?.payment_method || body?.billingType || 'PIX').toUpperCase();
       const requestedInstallments = Number(body?.installments || body?.installmentCount || 1);
-      if (requestedMethod !== 'PIX' || requestedInstallments !== 1) {
-        return Response.json({ error: 'Pagamento da Caravana é exclusivamente via PIX.' }, { status: 400 });
+      if (!['PIX', 'CREDIT_CARD'].includes(requestedMethod)) {
+        return Response.json({ error: 'Forma de pagamento inválida.' }, { status: 400 });
+      }
+      if (requestedMethod === 'PIX' && requestedInstallments !== 1) {
+        return Response.json({ error: 'PIX não possui parcelas.' }, { status: 400 });
+      }
+      if (requestedMethod === 'CREDIT_CARD' && (!Number.isInteger(requestedInstallments) || requestedInstallments < 1 || requestedInstallments > MAX_PARCELAS_CARTAO)) {
+        return Response.json({ error: 'Escolha de 1 a 3 parcelas no cartão.' }, { status: 400 });
       }
     }
 
@@ -296,20 +303,25 @@ return (async (req) => {
       });
     }
 
-    // Só reutiliza checkout de caravana quando o valor também é o valor canônico da caravana.
-    // Isso impede reaproveitar checkout antigo de lote geral (ex.: R$139) em uma inscrição de R$97.
+    const metodo = String(body?.payment_method || body?.billingType || 'PIX').toUpperCase();
+    const parcelas = metodo === 'CREDIT_CARD' ? Number(body?.installments || body?.installmentCount || 1) : 1;
+    const valorTotal = metodo === 'PIX' ? VALOR_PIX : VALOR_CARTAO;
+
+    // Reaproveita somente cobrança com modalidade, parcelas e valor idênticos.
     if (
       inscricao?.status_pagamento === 'checkout_pendente' &&
       inscricao.asaas_charge_url &&
       !isCheckoutExpirado(inscricao.updated_date) &&
-      Number(inscricao.valor_pago) === VALOR_POR_PESSOA
+      Number(inscricao.valor_pago) === valorTotal &&
+      String(inscricao.payment_method || 'PIX').toUpperCase() === metodo &&
+      Number(inscricao.installment_count || 1) === parcelas
     ) {
       return Response.json({
         success: true,
         inscricao_id: inscricao.id,
         codigo_inscricao: inscricao.codigo_inscricao,
         payment_url: inscricao.asaas_charge_url,
-        valor: VALOR_POR_PESSOA,
+        valor: valorTotal,
         reutilizado: true,
         redirect_url: '/obrigado',
       });
@@ -338,7 +350,9 @@ return (async (req) => {
       caravana_id: caravana.id,
       caravana_nome: caravana.nome,
       lote: inscricao?.lote || 'lote_1',
-      valor_pago: VALOR_POR_PESSOA,
+      valor_pago: valorTotal,
+      payment_method: metodo,
+      installment_count: parcelas,
       status_pagamento: 'pendente',
       codigo_inscricao: codigoInscricao,
       observacoes: body?.observacoes || '',
@@ -390,33 +404,52 @@ return (async (req) => {
       return Response.json({ error: 'Pagamento temporariamente indisponível. Seus dados foram salvos e nossa equipe poderá retomar com você.' }, { status: 503 });
     }
 
-    const checkoutPayload = {
-      billingTypes: ['PIX'],
-      chargeTypes: ['DETACHED'],
-      minutesToExpire: 1440,
-      externalReference: codigoInscricao,
-      callback: {
-        successUrl: '__APP_ORIGIN__/obrigado',
-        cancelUrl: '__APP_ORIGIN__/m31-caravana',
-        expiredUrl: '__APP_ORIGIN__/m31-caravana',
-      },
-      items: [{
-        name: 'M31 Filhas - Caravana',
-        description: `1 pessoa × R$ ${VALOR_POR_PESSOA} - ${nome}`,
-        value: VALOR_POR_PESSOA,
-        quantity: 1,
-      }],
-    };
-
-    let checkoutRes: Response;
-    let checkout: any;
+    let paymentRes: Response;
+    let payment: any;
     try {
-      checkoutRes = await fetch(`${ASAAS_BASE}/checkouts`, {
+      const searchResp = await fetch(`${ASAAS_BASE}/customers?cpfCnpj=${encodeURIComponent(cpfLimpo)}`, {
+        headers: { access_token: ASAAS_KEY },
+      });
+      if (!searchResp.ok) throw new Error('Não foi possível consultar os dados do pagador.');
+      const search = await searchResp.json();
+      let customerId = search?.data?.[0]?.id;
+      if (!customerId) {
+        const customerResp = await fetch(`${ASAAS_BASE}/customers`, {
+          method: 'POST',
+          headers: { access_token: ASAAS_KEY, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: nome,
+            cpfCnpj: cpfLimpo,
+            mobilePhone: whatsappFull,
+            ...(emailLimpo ? { email: emailLimpo } : {}),
+            notificationDisabled: true,
+          }),
+        });
+        const customer = await customerResp.json();
+        if (!customerResp.ok || !customer?.id) throw new Error('Não foi possível cadastrar o pagador. Confira seus dados.');
+        customerId = customer.id;
+      }
+
+      const paymentPayload: any = {
+        customer: customerId,
+        billingType: metodo,
+        dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+        description: `M31 Filhas - Caravana (1 pessoa) - ${metodo === 'PIX' ? 'PIX' : `${parcelas}x cartão`}`,
+        externalReference: codigoInscricao,
+      };
+      if (metodo === 'CREDIT_CARD' && parcelas > 1) {
+        paymentPayload.installmentCount = parcelas;
+        paymentPayload.totalValue = valorTotal;
+      } else {
+        paymentPayload.value = valorTotal;
+      }
+
+      paymentRes = await fetch(`${ASAAS_BASE}/payments`, {
         method: 'POST',
         headers: { access_token: ASAAS_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify(checkoutPayload),
+        body: JSON.stringify(paymentPayload),
       });
-      checkout = await checkoutRes.json();
+      payment = await paymentRes.json();
     } catch (e: any) {
       await S.EventoM31Inscricao.update(inscricao.id, {
         falha_tecnica: true,
@@ -432,14 +465,14 @@ return (async (req) => {
       return Response.json({ error: 'Não conseguimos abrir o pagamento agora. Seus dados foram salvos para recuperação.' }, { status: 502 });
     }
 
-    if (!checkoutRes.ok || !checkout?.link) {
-      const erroDetalhe = JSON.stringify(checkout || {}).slice(0, 300);
+    if (!paymentRes.ok || !payment?.invoiceUrl) {
+      const erroDetalhe = JSON.stringify(payment || {}).slice(0, 300);
       await S.EventoM31Inscricao.update(inscricao.id, {
         falha_tecnica: true,
         falha_tecnica_em: new Date().toISOString(),
         falha_tecnica_etapa: 'caravana_checkout',
-        falha_tecnica_http: checkoutRes.status,
-        falha_tecnica_erro: erroDetalhe || 'checkout_sem_link',
+        falha_tecnica_http: paymentRes.status,
+        falha_tecnica_erro: erroDetalhe || 'cobranca_sem_link',
         fila_recuperacao: true,
         fila_recuperacao_em: new Date().toISOString(),
         status_fila_recuperacao: 'aguardando_aprovacao',
@@ -450,9 +483,14 @@ return (async (req) => {
 
     await S.EventoM31Inscricao.update(inscricao.id, {
       status_pagamento: 'checkout_pendente',
-      asaas_charge_url: checkout.link,
-      asaas_checkout_id: checkout.id || null,
-      asaas_checkout_status: checkout.status || 'ACTIVE',
+      asaas_charge_url: payment.invoiceUrl,
+      asaas_payment_id: payment.id,
+      asaas_billing_type: metodo,
+      asaas_installment_count: parcelas,
+      asaas_total_value: valorTotal,
+      valor_pago: valorTotal,
+      payment_method: metodo,
+      installment_count: parcelas,
       etapa_funil: etapaMaisAvancada(inscricao.etapa_funil, 'checkout_criado'),
       etapa_funil_em: new Date().toISOString(),
       ultima_acao: 'checkout_criado',
@@ -473,8 +511,8 @@ return (async (req) => {
       inscricao_id: inscricao.id,
       caravana_id: caravana.id,
       codigo_inscricao: codigoInscricao,
-      payment_url: checkout.link,
-      valor: VALOR_POR_PESSOA,
+      payment_url: payment.invoiceUrl,
+      valor: valorTotal,
       qtd_pessoas: 1,
       redirect_url: '/obrigado',
     });
