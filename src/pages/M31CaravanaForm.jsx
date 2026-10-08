@@ -57,10 +57,8 @@ function SelectField({ label, required, value, onChange, options, disabled, fiel
   );
 }
 
-// Regra comercial da Caravana: PIX R$ 97 · Cartão R$ 110 (valor fixo, até 3x).
+// Regra comercial da Caravana: pagamento exclusivamente via PIX.
 const VALOR_PIX = 97;
-const VALOR_CARTAO = 110;
-const MAX_PARCELAS = 3;
 const brl = (v) => `R$ ${Number(v).toFixed(2).replace('.', ',')}`;
 
 export default function M31CaravanaForm({ caravanaId }) {
@@ -117,9 +115,6 @@ export default function M31CaravanaForm({ caravanaId }) {
   const [fieldErrors, setFieldErrors] = useState({});
   const [success, setSuccess] = useState(false);
   const [payUrl, setPayUrl] = useState('');
-  const [metodo, setMetodo] = useState('PIX');
-  const [parcelas, setParcelas] = useState(1);
-  const valorTotal = metodo === 'PIX' ? VALOR_PIX : VALOR_CARTAO;
   // Builder 360: configuração editável (banner, textos, campos) — defaults garantidos.
   const { T, campo, extras, config } = usePublicFormConfig('caravana');
   const [valoresExtras, setValoresExtras] = useState({});
@@ -263,8 +258,6 @@ export default function M31CaravanaForm({ caravanaId }) {
         cidade: cidadeInferida, estado: estadoInferido,
         caravana_id: form.caravana_id,
         qtd_pessoas: 1,
-        payment_method: metodo,
-        installments: parcelas,
         como_conheceu: form.comoConheceu || undefined,
         inscricao_id: intencaoId || undefined,
         // Campos personalizados → observações do registro (payload oficial intocado).
@@ -442,30 +435,7 @@ export default function M31CaravanaForm({ caravanaId }) {
 
                   <div style={{ margin:'4px 0 14px', padding:'12px 14px', borderRadius:14, background:'rgba(91,14,45,.06)' }}>
                     <div style={{ fontSize:14, fontWeight:800, color:'var(--m31-brand)' }}>Pagamento da Caravana</div>
-                    <div style={{ fontSize:13, marginTop:3, color:'var(--m31-t2)' }}>Escolha como prefere pagar</div>
-                    <div style={{ display:'flex', gap:8, marginTop:10 }}>
-                      <button type="button" className={`m31-ds-toggle-btn${metodo === 'PIX' ? ' active' : ''}`}
-                        style={{ flex:1, justifyContent:'center', padding:'10px 12px' }}
-                        onClick={() => { setMetodo('PIX'); setParcelas(1); }}>
-                        PIX · {brl(VALOR_PIX)}
-                      </button>
-                      <button type="button" className={`m31-ds-toggle-btn${metodo === 'CREDIT_CARD' ? ' active' : ''}`}
-                        style={{ flex:1, justifyContent:'center', padding:'10px 12px' }}
-                        onClick={() => setMetodo('CREDIT_CARD')}>
-                        Cartão · {brl(VALOR_CARTAO)}
-                      </button>
-                    </div>
-                    {metodo === 'CREDIT_CARD' && (
-                      <div style={{ display:'flex', gap:6, marginTop:8, flexWrap:'wrap' }}>
-                        {Array.from({ length: MAX_PARCELAS }, (_, i) => i + 1).map(n => (
-                          <button key={n} type="button" className={`m31-ds-toggle-btn${parcelas === n ? ' active' : ''}`}
-                            style={{ flex:'0 0 auto', padding:'8px 10px' }}
-                            onClick={() => setParcelas(n)}>
-                            {n}x de {brl(VALOR_CARTAO / n)}
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                    <div style={{ fontSize:13, marginTop:3, color:'var(--m31-t2)' }}>Exclusivamente via PIX · {brl(VALOR_PIX)}</div>
                   </div>
 
                   {/* Resumo preço */}
@@ -478,7 +448,7 @@ export default function M31CaravanaForm({ caravanaId }) {
                       <div style={{ fontSize:12, color:'var(--m31-t3)', textDecoration:'line-through', marginBottom:2 }}>
                         {loteValor != null ? `R$ ${loteValor.toFixed(2).replace('.', ',')}` : ''}
                       </div>
-                      <div className="m31-ds-price-summary-amount">{brl(valorTotal)}</div>
+                      <div className="m31-ds-price-summary-amount">{brl(VALOR_PIX)}</div>
                     </div>
                   </div>
 
