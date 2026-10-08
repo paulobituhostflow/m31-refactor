@@ -10,7 +10,7 @@ import { resolverDestinoInscricao } from '@/lib/m31LandingCta';
 // ── Block Renderers ────────────────────────────────────────────────────────
 
 function BlockHero({ data, brand, textColor }) {
-  const M31_LOGO = "https://media.base44.com/images/public/69d51b279da069f623e291a6/a22f06b49_LOGOM31FILHAS1.png";
+  const M31_LOGO = "/assets/a22f06b49_LOGOM31FILHAS1.png";
 
   return (
     <section
@@ -240,7 +240,7 @@ function BlockVideo({ data, brand }) {
 }
 
 function BlockFooter({ data, brand }) {
-  const M31_LOGO = "https://media.base44.com/images/public/69d51b279da069f623e291a6/a22f06b49_LOGOM31FILHAS1.png";
+  const M31_LOGO = "/assets/a22f06b49_LOGOM31FILHAS1.png";
   return (
     <footer style={{ borderTop: '1px solid rgba(255,255,255,0.1)', padding: '40px 24px', textAlign: 'center' }}>
       <img src={M31_LOGO} alt="M31 Filhas" style={{ height: 48, margin: '0 auto 16px', opacity: 0.6, display: 'block' }} />
