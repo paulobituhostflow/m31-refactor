@@ -1,9 +1,9 @@
 // Editor Visual de Landing Page — Blocos Drag & Drop estilo Elementor
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import {
-  GripVertical, Plus, Trash2, ChevronDown, ChevronUp, Layout, Image,
-  Type, Palette, AlignLeft, MoveUp, MoveDown, Copy, Star,
+  GripVertical, Plus, Trash2, ChevronDown, ChevronUp, Layout,
+  MoveUp, MoveDown, Copy, Star,
   MousePointerClick, Play, Info, Quote, MessageCircle, Minus,
   ArrowDown, Code,
 } from 'lucide-react';

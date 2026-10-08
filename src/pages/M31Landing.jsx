@@ -3,11 +3,11 @@
  * Busca EventPageConfig com event_key='m31_filhas_2026' e renderiza via M31LandingRenderer.
  * Se não houver config publicada, exibe a landing estática hardcoded como fallback.
  */
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import M31LandingRenderer from '@/components/m31/M31LandingRenderer';
 import { motion } from 'framer-motion';
-import { MapPin, Clock, Calendar, ChevronDown, Star, Heart, Sparkles, Users, Play } from 'lucide-react';
+import { MapPin, Clock, Calendar, ChevronDown, Star, Sparkles, Play } from 'lucide-react';
 import { CAMINHO_INSCRICAO } from '@/lib/m31LandingCta';
 
 const GlobalStyles = () => (

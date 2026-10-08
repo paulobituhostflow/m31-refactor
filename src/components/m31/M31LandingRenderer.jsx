@@ -2,8 +2,7 @@
  * M31LandingRenderer — renderiza blocos do EventPageConfig em modo LIVE
  * Mesma lógica do BuilderPreview mas sem simulação mobile — renderiza full-width real.
  */
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState } from 'react';
 import { Play } from 'lucide-react';
 import { ensureV2 } from '@/components/m31/builder/blocksConfig';
 import { resolverDestinoInscricao } from '@/lib/m31LandingCta';
