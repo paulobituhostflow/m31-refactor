@@ -1,10 +1,17 @@
 # Publicação
 
-A homologação foi provisionada em 05/10/2026 na conta do cliente: [M31 staging](https://m31-staging.paulobituadv.workers.dev), usando o projeto Supabase `hnesgoayhihpuvvtfddm`. As sete migrations e as duas filas de staging foram aplicadas. Produção, dados reais e integrações externas continuam para a etapa posterior. Consulte `REMOTE_VALIDATION.md` para as evidências e limites da validação hospedada.
+## Estado hospedado — 08/10/2026
+
+- **Staging:** [M31 staging](https://m31-staging.paulobituadv.workers.dev), Supabase `hnesgoayhihpuvvtfddm`; nove migrations e duas filas aplicadas. O histórico de migrations foi conferido no banco.
+- **Produção:** [M31 production](https://m31-production.paulobituadv.workers.dev), Supabase `czpimidslxtzodlaiwtg`; nove migrations aplicadas, filas de jobs/DLQ criadas e vinculadas ao Worker.
+- A Action [37790353860](https://github.com/paulobituhostflow/m31-refactor/actions/runs/37790353860) passou por verify, conferência/aplicação do schema, deploy e smoke HTTP. O commit implantado `786d71e` está no PR #1, que continua aberto.
+- Em ambos os ambientes `EXTERNAL_SIDE_EFFECTS=false` e `AUTOMATIONS_ENABLED=false`. Nenhum dado real foi importado para produção e nenhum webhook externo de produção foi registrado. OAuth Google/Drive e autenticação SMTP ainda exigem configuração e validação.
+
+Consulte `REMOTE_VALIDATION.md` para as evidências e limites da validação hospedada.
 
 ## Separação de ambientes
 
-Crie dois projetos Supabase distintos (`m31-staging` e `m31-production`) e configure dois ambientes GitHub (`staging` e `production`). Configure aprovação obrigatória no ambiente de produção. Workers, filas, buckets do projeto Supabase, OAuth e credenciais devem ser distintos. O desenvolvimento não aceita URL remota do Supabase.
+Os projetos Supabase `m31-staging` e `m31-production` e os ambientes GitHub `staging` e `production` estão separados. A aprovação obrigatória de produção está ativa. Mantenha Workers, filas, buckets, OAuth e credenciais separados por ambiente. O desenvolvimento não aceita URL remota do Supabase.
 
 O arquivo Wrangler define os Workers `m31-staging`/`m31-production`, suas filas e Cron. Static Assets usa fallback SPA e `run_worker_first: ["/api/*"]`, mantendo API fora do fallback HTML. Os deploys não ativam efeitos externos nem workflows.
 
@@ -19,7 +26,7 @@ npx supabase db push
 
 Informe a senha no prompt protegido. Não coloque senha de banco em argumentos, URLs, Git ou logs. Não execute `db reset` em ambiente remoto. As migrations criam buckets `m31-public` e `m31-private`; não reutilize buckets/projetos da operação atual.
 
-Após escolher a conta Cloudflare correta, prepare as quatro filas:
+As quatro filas abaixo já existem. Estes comandos servem somente para recriar um recurso que esteja ausente; o deploy liga os bindings do Worker às filas existentes.
 
 ```sh
 npx wrangler queues create m31-staging-jobs
@@ -56,7 +63,7 @@ npx wrangler secret put TEST_RECIPIENTS --env staging
 
 Repita apenas no ambiente necessário. A referência completa está em `.dev.vars.example`. Configure o remetente autenticado do Brevo, `WHATSAPP_GROUP_INVITE`, modelos/chave OpenAI e as opções Google explicitamente. A URL UAZAPI deve apontar para uma instância dedicada. Nunca configure homologação com destinatários, planilhas ou grupos dos clientes.
 
-Em 06/10/2026, o environment `production` recebeu os secrets reais de Asaas, UAZAPI, Brevo, OpenAI, remetente, planilha e senha SMTP, além do convite VIP. A aprovação por `paulobituhostflow` está configurada. Produção ainda exige projeto Supabase, bindings/credenciais Cloudflare e `APP_ORIGIN`; não houve deploy de produção. Consulte `CLIENT_CONFIGURATION.md` para verificações e pendências.
+O environment `production` guarda as credenciais configuradas para Asaas, UAZAPI, Brevo, OpenAI, remetente, planilha e SMTP, além das chaves do Supabase/Cloudflare e `APP_ORIGIN`. A aprovação por `paulobituhostflow` está configurada. Consulte `CLIENT_CONFIGURATION.md` para integrações que ainda faltam validar.
 
 ## Auth e identidade
 
@@ -86,8 +93,8 @@ Para workflows: inicialize o catálogo com uma conta super_admin em `POST /api/a
 
 ## GitHub Actions
 
-`validate.yml` roda lint, tipos, testes, build frontend/Worker e Playwright com fixtures. Não depende de Base44 e não cria infraestrutura. `deploy.yml` roda apenas por `workflow_dispatch`, selecionando staging ou production, verifica o código, valida as variáveis, publica o Worker e executa smoke HTTP. A publicação não aplica migrations nem provisiona filas; essas etapas precisam estar concluídas.
+`validate.yml` roda lint, tipos, testes, build frontend/Worker e Playwright com fixtures. Não depende de Base44 e não cria infraestrutura. `deploy.yml` roda por `workflow_dispatch`, selecionando staging ou production, verifica o código, valida as variáveis, publica secrets e Worker e executa smoke HTTP com tentativas para aguardar a propagação. Ao escolher production, o workflow confere o projeto, mostra migrations pendentes e aplica o schema antes do deploy. As filas devem existir antes da publicação; o deploy cria os bindings do consumer/producer, mas não cria os recursos de filas.
 
-A promoção para produção é outra execução manual sobre o commit aprovado em homologação, sujeita à aprovação do environment GitHub. Configure essa proteção na UI do GitHub; o YAML não cria a política. A validação do commit `6217340` passou na [Action 37358696059](https://github.com/paulobituhostflow/m31-refactor/actions/runs/37358696059). O ambiente GitHub `staging` recebeu os secrets necessários e `APP_ORIGIN`; o deploy hospedado deve ser conferido pela execução manual do workflow. O token Cloudflare de CI tem validade até 03/01/2027 e precisa ser renovado antes de vencer.
+A publicação de produção exige aprovação do environment GitHub. A Action de produção 37790353860 foi aprovada e concluída no commit `786d71e`; revise o PR #1 antes de promover o mesmo código à branch principal. O token Cloudflare de CI vence em 03/01/2027 e precisa ser renovado antes dessa data.
 
 Referências: [Static Assets SPA](https://developers.cloudflare.com/workers/static-assets/routing/single-page-application/), [RLS e service keys](https://supabase.com/docs/guides/database/postgres/row-level-security), [OAuth Google](https://developers.google.com/identity/protocols/oauth2/web-server), [OpenAI Responses e schemas](https://developers.openai.com/api/docs/guides/migrate-to-responses#6-update-structured-outputs-definitions), [Queues delivery](https://developers.cloudflare.com/queues/reference/delivery-guarantees/).

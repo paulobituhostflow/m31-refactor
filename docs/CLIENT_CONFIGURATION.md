@@ -1,6 +1,6 @@
 # Configurações e credenciais do M31
 
-O M31 precisa das contas de pagamentos, WhatsApp, e-mail, Google e OpenAI para operar todas as integrações. A infraestrutura de staging está configurada; as credenciais reais recuperadas foram guardadas no environment GitHub `production`, com aprovação obrigatória para deploy. Elas ainda não estão em um Worker de produção, que exige provisionamento separado. Esta lista cobre o frontend, o Worker, Supabase Auth, publicação e ferramentas de migração do projeto M31.
+O M31 precisa das contas de pagamentos, WhatsApp, e-mail, Google e OpenAI para operar todas as integrações. **Atualização de 08/10/2026:** staging e produção estão provisionados; produção recebeu o Worker, nove migrations e bindings das filas. As credenciais configuradas estão guardadas nos environments do GitHub e no Worker, com aprovação obrigatória para deploy de produção. Webhooks externos não foram registrados, não houve importação de dados para produção e integrações Google/Auth ainda precisam de configuração e validação. Esta lista cobre o frontend, o Worker, Supabase Auth, publicação e ferramentas de migração do projeto M31.
 
 Conferência em 06/10/2026, a partir do commit `25c137d`, incluindo a preparação das integrações e do pipeline. Os nomes dos secrets e bindings foram consultados sem revelar seus valores. As configurações privadas de SMTP e do provider Google no Supabase precisam de confirmação no painel; o `config diff` não oferece evidência suficiente para afirmar sua presença ou ausência.
 
@@ -43,10 +43,12 @@ Asaas sandbox e produção usam URLs e chaves distintas, conforme a [documentaç
 | Local | Configurado | Pendente |
 | --- | --- | --- |
 | GitHub environment `staging` | Secrets `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `TOKEN_ENCRYPTION_KEY`; variable `APP_ORIGIN` | Destinos e providers dedicados de teste; o convite real não foi aplicado a staging |
-| GitHub environment `production` | 12 secrets de integrações/SMTP e variable `WHATSAPP_GROUP_INVITE`; aprovação obrigatória por `paulobituhostflow` | Infraestrutura própria, `APP_ORIGIN`, Cloudflare/Supabase e Google OAuth |
-| Worker `m31-staging` | Os quatro secrets de Supabase/criptografia; flags, origem e URL sandbox Asaas; assets e filas | Todos os secrets/configurações de providers listados abaixo, remetente, Google, OpenAI, convite e destinos de teste |
-| Cloudflare | Worker de staging e bindings das filas | Worker `m31-production` não aparece na conta consultada; recursos e configuração de produção devem ser conferidos/provisionados |
-| Supabase de staging | Projeto `hnesgoayhihpuvvtfddm`, dados e autenticação migrados | SMTP e Google login precisam de confirmação no painel; produção precisa de projeto separado |
+| GitHub environment `production` | Secrets de integrações/SMTP, Cloudflare, Supabase e variable `APP_ORIGIN`; aprovação obrigatória por `paulobituhostflow` | Google OAuth/Drive/Sheets e validações de remetente/Auth; registrar webhooks nos providers |
+| Worker `m31-staging` | Supabase/criptografia, URL sandbox Asaas, UAZAPI/Brevo configurados; filas vinculadas | Validar Asaas sandbox e destinos de teste antes de liberar efeitos externos |
+| Worker `m31-production` | Publicado em `m31-production.paulobituadv.workers.dev`; secrets configurados; filas vinculadas | Google OAuth/Drive/Sheets; registrar e validar webhooks de Asaas/UAZAPI; validações de operação |
+| Cloudflare | Workers `m31-staging` e `m31-production`; filas de jobs/DLQ para ambos | Domínio próprio de produção, se aprovado para o corte |
+| Supabase de staging | Projeto `hnesgoayhihpuvvtfddm`, dados migrados, nove migrations | SMTP e login Google ainda precisam de confirmação/configuração |
+| Supabase de produção | Projeto `czpimidslxtzodlaiwtg`, nove migrations, buckets/RLS criados | Auth/redirects Google/SMTP e importação de dados continuam pendentes |
 
 O deploy agora envia os quatro secrets obrigatórios e os providers opcionais configurados no environment selecionado. Campos opcionais vazios são omitidos, preservando configurações remotas existentes. O arquivo temporário tem modo 0600, não sobrescreve arquivo existente e é removido ao final. A senha SMTP do Supabase Auth, chaves de exportação e credenciais administrativas ficam fora dos bindings do Worker. Cadastrar secrets no GitHub prepara um futuro deploy; não ativa uma integração nem configura automaticamente o Supabase Auth.
 

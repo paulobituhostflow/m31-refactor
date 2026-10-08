@@ -2,6 +2,8 @@
 
 **Atualização de 06/10/2026:** staging agora contém a cópia de dados e acessos descrita em [MIGRATION.md](MIGRATION.md). A publicação inicial e suas contagens abaixo são históricas.
 
+**Atualização de 08/10/2026:** produção também foi provisionada e publicada; a seção de produção ao final registra o estado mais recente.
+
 ## Ambiente
 
 - URL: https://m31-staging.paulobituadv.workers.dev
@@ -74,3 +76,13 @@ As instruções de [agent-setup/prompt.md](https://developers.cloudflare.com/age
 - Limite: resposta correta do Base44 coberta com fixtures; endpoint real confirmado com uma conta sintética inexistente. A própria pessoa deve realizar o primeiro login real com sua senha antiga. Base44 precisa permanecer ativo durante a transição.
 
 Verificação local desta alteração: `npm run verify` passou (259 testes, lint com zero erros/131 avisos, tipos, builds e varredura de segredos). Playwright passou em 14 casos com fixtures; três casos da stack local ficaram ignorados nessa bateria. O teste remoto de senha descrito acima usou Supabase real, separadamente.
+
+## Produção — 08/10/2026
+
+- Worker: [m31-production](https://m31-production.paulobituadv.workers.dev), publicado no commit `786d71e19dff43299873a373fc8095a24d2c9741`, no PR #1 ainda aberto.
+- Supabase: projeto `m31-production`, ref `czpimidslxtzodlaiwtg`, PostgreSQL 17. A conferência no SQL Editor confirmou as nove versões `20261005000100` a `20261005000700`, `20261006000100` e `20261006000200` em `supabase_migrations.schema_migrations`.
+- Cloudflare Queues: `m31-production-jobs` (`1c0a483575cc4f1a8e993efebdcaad92`) está ligado a producer e consumer; `m31-production-dlq` (`c451d966fe174943a00a64e79161fb4d`) está ligado como producer/DLQ.
+- A Action [37790353860](https://github.com/paulobituhostflow/m31-refactor/actions/runs/37790353860) passou por `npm run verify`, dry-run/aplicação das migrations, upload de secrets, deploy e smoke HTTP.
+- O smoke final confirmou `/api/health` 200 com banco saudável, `/api/public-settings` 200 JSON e `/api/unknown-smoke` 404 JSON. O primeiro deploy (37789809307) encontrou o endpoint ainda propagando logo após a publicação; o smoke agora repete as consultas antes de falhar.
+- Staging também foi conferido: contém as mesmas nove migrations e suas filas de jobs/DLQ seguem vinculadas. Nenhuma ação de migration foi necessária nesse ambiente.
+- Produção ainda não recebeu dados reais do Base44, não tem webhooks Asaas/UAZAPI registrados e mantém `EXTERNAL_SIDE_EFFECTS=false` e `AUTOMATIONS_ENABLED=false`. Não houve cobrança, envio externo ou corte do domínio Base44. Google OAuth/Drive/Sheets e configuração/validação de Auth/SMTP permanecem pendentes.
