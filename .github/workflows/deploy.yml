@@ -57,6 +57,44 @@ jobs:
       - run: npm run verify
       - name: Validate environment and prepare protected secrets
         run: node scripts/ci-secrets.mjs
+      - name: Preview production Supabase migrations
+        if: inputs.environment == 'production'
+        env:
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          const expectedRef = "czpimidslxtzodlaiwtg";
+          const databaseUrl = new URL(process.env.SUPABASE_URL ?? "");
+          if (databaseUrl.hostname !== `${expectedRef}.supabase.co`) {
+            throw new Error("SUPABASE_URL does not point to the production project.");
+          }
+          if (!process.env.SUPABASE_DB_PASSWORD) {
+            throw new Error("SUPABASE_DB_PASSWORD is missing from the production environment.");
+          }
+          NODE
+          DATABASE_URL="$(node --input-type=module -e '
+            const ref = "czpimidslxtzodlaiwtg";
+            const url = new URL(`postgresql://postgres.${ref}@aws-0-us-east-1.pooler.supabase.com:5432/postgres`);
+            url.password = process.env.SUPABASE_DB_PASSWORD;
+            process.stdout.write(url.toString());
+          ')"
+          echo "::add-mask::$DATABASE_URL"
+          npx supabase db push --db-url "$DATABASE_URL" --dry-run --skip-vault
+      - name: Apply production Supabase migrations
+        if: inputs.environment == 'production'
+        env:
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          set -euo pipefail
+          DATABASE_URL="$(node --input-type=module -e '
+            const ref = "czpimidslxtzodlaiwtg";
+            const url = new URL(`postgresql://postgres.${ref}@aws-0-us-east-1.pooler.supabase.com:5432/postgres`);
+            url.password = process.env.SUPABASE_DB_PASSWORD;
+            process.stdout.write(url.toString());
+          ')"
+          echo "::add-mask::$DATABASE_URL"
+          npx supabase db push --db-url "$DATABASE_URL" --skip-vault --yes
       - name: Upload configured Worker secrets
         run: npx wrangler secret bulk .ci-secrets.json --env "$DEPLOY_ENV"
       - name: Deploy configured environment
