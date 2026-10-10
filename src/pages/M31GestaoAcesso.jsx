@@ -46,7 +46,7 @@ export default function M31GestaoAcesso() {
   );
   const [whatsapp, setWhatsapp] = useState(previous?.whatsapp_nacional || '');
   const [senha, setSenha] = useState('');
-  const [email, setEmail] = useState(OPERATIONAL_ACCOUNT_EMAIL);
+  const email = OPERATIONAL_ACCOUNT_EMAIL;
   const [contaAtual, setContaAtual] = useState(null);
   useEffect(() => { let cancelled = false; base44.auth.me().then(user => { if (!cancelled && user?.email) setContaAtual(user); }).catch(() => {}); return () => { cancelled = true; }; }, []);
   const [mostrarSenha, setMostrarSenha] = useState(false);
@@ -135,7 +135,7 @@ export default function M31GestaoAcesso() {
         <img src={LOGO} alt="M31 Filhas" style={styles.logo} />
         <div style={styles.heading}>
           <h1 style={styles.title}>Gestão Operacional</h1>
-          <p style={styles.subtitle}>Identifique-se e entre com uma conta autorizada de gestão.</p>
+          <p style={styles.subtitle}>Identifique-se e entre com a senha da equipe.</p>
         </div>
 
         <form onSubmit={entrar} style={styles.form}>
@@ -182,16 +182,13 @@ export default function M31GestaoAcesso() {
           </Field>
 
           {contaAtual && <button type="button" disabled={loading} onClick={event => entrar(event, true)} style={styles.submit}>Continuar com {contaAtual.full_name || 'minha conta'}</button>}
-          <Field label="E-mail da conta autorizada" icon={<UserRound size={18} />}>
-            <input type="email" name="email" value={email} onChange={event => setEmail(event.target.value)} autoComplete="username" style={styles.input} />
-          </Field>
-          <Field label="Senha" icon={<LockKeyhole size={18} />}>
+          <Field label="Senha da equipe" icon={<LockKeyhole size={18} />}>
             <input
               name="senha"
               type={mostrarSenha ? 'text' : 'password'}
               value={senha}
               onChange={(event) => setSenha(event.target.value)}
-              placeholder="Digite a senha da sua conta"
+              placeholder="Digite a senha (M31FILHAS)"
               autoComplete="current-password"
               style={{ ...styles.input, paddingRight: '44px' }}
             />
@@ -212,7 +209,7 @@ export default function M31GestaoAcesso() {
           </button>
         </form>
 
-        <p style={styles.note}>Use o e-mail e a senha que você já utilizava no M31.</p>
+        <p style={styles.note}>Todas as responsáveis utilizam a senha da equipe (M31FILHAS).</p>
         <a href="/m31-login" style={{ ...styles.note, display: 'block', textAlign: 'center' }}>Acesso geral às outras áreas</a>
       </section>
     </main>
