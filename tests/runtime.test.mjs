@@ -67,7 +67,7 @@ test("guest writes cannot modify a different registration merely by knowing its 
   assert.equal(changed, false);
 });
 test("all M31 handlers are compiled callable modules without Deno or SDK runtime imports", async () => {
-  assert.equal(Object.keys(handlers).length, 203);
+  assert.equal(Object.keys(handlers).length, 204);
   for (const [name, handler] of Object.entries(handlers)) {
     assert.equal(typeof handler, "function");
     const source = await readFile(

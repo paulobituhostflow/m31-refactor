@@ -113,7 +113,12 @@ export default function M31Admin() {
   const permissoesPorPerfil = {
     super_admin: ['home', 'dashboard', 'saude', 'operacoes', 'participantes', 'checkin', 'config_evento', 'voluntarios', 'intercessao', 'tarefas', 'logistica', 'cronograma', 'cartinhas', 'financeiro', 'transacoes', 'fornecedores', 'contas', 'config_bot', 'equipe', 'solicitacoes', 'logs', 'disparos', 'importar', 'exportar', 'builder', 'auditoria', 'status_envios', 'central_mensagens', 'branding', 'conciliacao'],
     coordenador: ['home', 'dashboard', 'saude_op', 'operacoes', 'participantes', 'checkin', 'config_evento', 'tarefas', 'logistica', 'cronograma', 'cartinhas', 'equipe', 'solicitacoes', 'logs', 'voluntarios', 'disparos'],
+    gestao_operacional: ['home', 'dashboard', 'operacoes', 'participantes', 'checkin', 'config_evento', 'voluntarios', 'tarefas', 'logistica', 'cronograma', 'fornecedores'],
+    coordenadora_geral: ['home', 'dashboard', 'operacoes', 'participantes', 'checkin', 'voluntarios', 'tarefas', 'logistica', 'cronograma', 'fornecedores', 'contas'],
+    gestora_inscricoes: ['home', 'dashboard', 'operacoes', 'participantes', 'checkin', 'voluntarios', 'tarefas', 'logistica', 'cronograma', 'fornecedores'],
+    coordenacao_participantes: ['home', 'dashboard', 'operacoes', 'participantes', 'checkin', 'voluntarios', 'tarefas', 'logistica', 'cronograma', 'fornecedores'],
     visualizacao: ['home', 'participantes', 'config_evento', 'voluntarios', 'importar', 'exportar', 'tarefas', 'logistica', 'cronograma', 'fornecedores', 'operacoes', 'financeiro', 'transacoes', 'contas', 'equipe', 'conciliacao'],
+    intercessao_operacional: ['intercessao'],
     voluntario: ['home', 'checkin', 'status_envios'],
   };
 
@@ -189,6 +194,7 @@ export default function M31Admin() {
     : membro?.perfil === 'coordenadora_geral' ? 'Coord. Geral'
     : membro?.perfil === 'gestora_inscricoes' ? 'Gestora de Inscrições'
     : membro?.perfil === 'coordenacao_participantes' ? 'Coord. Participantes'
+    : membro?.perfil === 'intercessao_operacional' ? 'Intercessão'
     : membro?.perfil === 'voluntario' ? 'Voluntária'
     : isSuperAdmin ? 'Super Admin' : '';
 

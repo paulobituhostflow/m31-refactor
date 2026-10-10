@@ -56,9 +56,13 @@ for (const folder of ["dist", ".worker-build"])
     let content = await readFile(path, "utf8");
     if (publicKey)
       content = content.replaceAll(publicKey, "PUBLIC_SUPABASE_KEY_ALLOWED");
+    // Only the Worker may validate an old password against this exact source app.
+    // The browser and all other source endpoints must remain independent.
+    if (folder === '.worker-build')
+      content = content.replaceAll('https://base44.app/api/apps/69d51b279da069f623e291a6/auth/login', 'TEMPORARY_LEGACY_AUTH_ALLOWED');
     if (patterns.some((pattern) => pattern.test(content)))
       throw new Error(`Build contém dependência da origem ou segredo: ${path}`);
   }
 console.log(
-  "Builds independentes do Base44; padrões de segredos privilegiados ausentes.",
+  "Frontend independente; Worker permite apenas a autenticação legada temporária; padrões de segredos privilegiados ausentes.",
 );

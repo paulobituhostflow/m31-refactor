@@ -2,11 +2,13 @@
 import { useState } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import {
-  GripVertical, Plus, Trash2, ChevronDown, ChevronUp, Layout, MoveUp, MoveDown, Copy, Star,
+  GripVertical, Plus, Trash2, ChevronDown, ChevronUp, Layout,
+  MoveUp, MoveDown, Copy, Star,
   MousePointerClick, Play, Info, Quote, MessageCircle, Minus,
   ArrowDown, Code,
 } from 'lucide-react';
 import { BLOCK_TYPES, ensureV2 } from './blocksConfig';
+import { CAMINHO_INSCRICAO, validarDestinoInscricao } from '@/lib/m31LandingCta';
 
 const iconMap = { Layout, Star, MousePointerClick, Play, Info, Quote, MessageCircle, Minus, ArrowDown, Code };
 
@@ -157,10 +159,28 @@ function ItemEditor({ items, onChange, fields, label }) {
 
 // ── Per-Type Field Editors ───────────────────────────────────────────────
 const LIVE_URLS = {
-  inscricao: '/m31-inscricao',
-  caravana:  '/m31-caravana',
-  servir:    '/m31-servir',
+  // Inscrição: caminho da própria aplicação (mesmo domínio da landing).
+  inscricao: CAMINHO_INSCRICAO,
+  caravana:  'https://inscricoes.m31filhas.com.br/m31-caravana',
+  servir:    'https://inscricoes.m31filhas.com.br/m31-servir',
 };
+
+// Avisa no construtor quando o CTA aponta para o site institucional antigo (404).
+function AvisoCtaInscricao({ url }) {
+  const v = validarDestinoInscricao(url);
+  if (v.ok) return null;
+  return (
+    <div style={{
+      marginTop: 5, fontSize: 10, fontWeight: 600, color: '#B45309',
+      background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 6,
+      padding: '5px 8px', lineHeight: 1.4,
+    }}>
+      {v.motivo === 'site_antigo'
+        ? 'Este link aponta para o site antigo (WordPress), que devolve página não encontrada. Use "Inscrição" para levar ao formulário da aplicação.'
+        : 'Este link aponta para outro domínio. Use "Inscrição" para levar ao formulário da aplicação.'}
+    </div>
+  );
+}
 
 function QuickUrl({ label, url, onSet }) {
   return (
@@ -212,6 +232,7 @@ function HeroFields({ data, setData }) {
           <QuickUrl label="Caravana" url={LIVE_URLS.caravana} onSet={v => setData('cta_url', v)} />
           <QuickUrl label="Servir" url={LIVE_URLS.servir} onSet={v => setData('cta_url', v)} />
         </div>
+        <AvisoCtaInscricao url={data.cta_url} />
       </div>
       <F label="URL da imagem de fundo"><Txt value={data.hero_image} onChange={v => setData('hero_image', v)} placeholder="https://..." /></F>
     </>
@@ -256,6 +277,7 @@ function CTASectionFields({ data, setData }) {
           <QuickUrl label="Caravana" url={LIVE_URLS.caravana} onSet={v => setData('button_url', v)} />
           <QuickUrl label="Servir" url={LIVE_URLS.servir} onSet={v => setData('button_url', v)} />
         </div>
+        <AvisoCtaInscricao url={data.button_url} />
       </div>
     </>
   );
@@ -282,6 +304,7 @@ function VideoFields({ data, setData }) {
               <QuickUrl label="Caravana" url={LIVE_URLS.caravana} onSet={v => setData('delay_cta_url', v)} />
               <QuickUrl label="Servir" url={LIVE_URLS.servir} onSet={v => setData('delay_cta_url', v)} />
             </div>
+            <AvisoCtaInscricao url={data.delay_cta_url} />
           </div>
         </>
       )}

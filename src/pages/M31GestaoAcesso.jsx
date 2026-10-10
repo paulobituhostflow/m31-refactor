@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Eye, EyeOff, LockKeyhole, Phone, UserRound } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { canOpenM31Panel } from '@/lib/m31PanelAccess';
 
 export const OPERATIONAL_ACCOUNT_EMAIL = 'paulobituadv+gestaom31@gmail.com';
 export const OPERATOR_STORAGE_KEY = 'm31_operador_atual';
@@ -45,7 +46,7 @@ export default function M31GestaoAcesso() {
   );
   const [whatsapp, setWhatsapp] = useState(previous?.whatsapp_nacional || '');
   const [senha, setSenha] = useState('');
-  const [email, setEmail] = useState(OPERATIONAL_ACCOUNT_EMAIL);
+  const email = OPERATIONAL_ACCOUNT_EMAIL;
   const [contaAtual, setContaAtual] = useState(null);
   useEffect(() => { let cancelled = false; base44.auth.me().then(user => { if (!cancelled && user?.email) setContaAtual(user); }).catch(() => {}); return () => { cancelled = true; }; }, []);
   const [mostrarSenha, setMostrarSenha] = useState(false);
@@ -84,6 +85,11 @@ export default function M31GestaoAcesso() {
       setSenha('');
       }
 
+      const user = await base44.auth.me();
+      if (!canOpenM31Panel(user, 'management')) {
+        throw Object.assign(new Error('Esta conta não possui perfil de gestão.'), { code: 'management_required' });
+      }
+
       const sessionResponse = await base44.functions.invoke('m31AbrirSessaoOperacional', {
         nome: nomeLimpo,
         whatsapp: telefoneNacional,
@@ -108,8 +114,12 @@ export default function M31GestaoAcesso() {
       window.location.replace('/m31-gestao-mobile');
     } catch (error) {
       const code = error?.code || error?.response?.data?.error || error?.data?.error || error?.message || '';
-      if (['auth_failed', 'auth_token_missing'].includes(code)) {
+      if (code === 'management_required') {
+        setErro('Esta conta não possui perfil de gestão. Entre pelo acesso geral para abrir sua área.');
+      } else if (['auth_failed', 'auth_token_missing', 'invalid_credentials'].includes(code)) {
         setErro('Não foi possível autenticar a conta da equipe. Verifique a senha e tente novamente.');
+      } else if (code === 'legacy_auth_unavailable' || error?.status === 429) {
+        setErro(error.message);
       } else if (String(code).includes('operator_not_registered') || String(code).includes('forbidden') || String(code).includes('scope')) {
         setErro('Seu operador está identificado, mas ainda não possui acesso à área liberada para ele.');
       } else {
@@ -125,7 +135,7 @@ export default function M31GestaoAcesso() {
         <img src={LOGO} alt="M31 Filhas" style={styles.logo} />
         <div style={styles.heading}>
           <h1 style={styles.title}>Gestão Operacional</h1>
-          <p style={styles.subtitle}>Identifique-se para acessar o painel.</p>
+          <p style={styles.subtitle}>Identifique-se e entre com a senha da equipe.</p>
         </div>
 
         <form onSubmit={entrar} style={styles.form}>
@@ -172,16 +182,13 @@ export default function M31GestaoAcesso() {
           </Field>
 
           {contaAtual && <button type="button" disabled={loading} onClick={event => entrar(event, true)} style={styles.submit}>Continuar com {contaAtual.full_name || 'minha conta'}</button>}
-          <Field label="E-mail da conta autorizada" icon={<UserRound size={18} />}>
-            <input type="email" name="email" value={email} onChange={event => setEmail(event.target.value)} autoComplete="username" style={styles.input} />
-          </Field>
-          <Field label="Senha" icon={<LockKeyhole size={18} />}>
+          <Field label="Senha da equipe" icon={<LockKeyhole size={18} />}>
             <input
               name="senha"
               type={mostrarSenha ? 'text' : 'password'}
               value={senha}
               onChange={(event) => setSenha(event.target.value)}
-              placeholder="Digite a senha da sua conta"
+              placeholder="Digite a senha (M31FILHAS)"
               autoComplete="current-password"
               style={{ ...styles.input, paddingRight: '44px' }}
             />
@@ -202,7 +209,8 @@ export default function M31GestaoAcesso() {
           </button>
         </form>
 
-        <p style={styles.note}>Acesso restrito à equipe autorizada do M31.</p>
+        <p style={styles.note}>Todas as responsáveis utilizam a senha da equipe (M31FILHAS).</p>
+        <a href="/m31-login" style={{ ...styles.note, display: 'block', textAlign: 'center' }}>Acesso geral às outras áreas</a>
       </section>
     </main>
   );
@@ -294,4 +302,3 @@ const styles = {
   },
   note: { margin: '16px 0 0', textAlign: 'center', color: '#8B817C', fontSize: '12px' },
 };
-

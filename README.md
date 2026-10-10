@@ -1,6 +1,6 @@
 # M31 independente — Cloudflare + Supabase
 
-Cópia do M31 separada do repositório conectado ao Base44. Origem: `c342879566d47d7b53ed8387687933e9c850085d`. Git iniciado sem histórico anterior e publicado no repositório independente [paulobituhostflow/m31-refactor](https://github.com/paulobituhostflow/m31-refactor). A homologação está publicada em [M31 staging](https://m31-staging.paulobituadv.workers.dev/m31). Nenhum cliente real foi exportado ou importado.
+Cópia do M31 separada do repositório conectado ao Base44. Origem: `c342879566d47d7b53ed8387687933e9c850085d`. Git iniciado sem histórico anterior e publicado no repositório independente [paulobituhostflow/m31-refactor](https://github.com/paulobituhostflow/m31-refactor). A homologação está publicada em [M31 staging](https://m31-staging.paulobituadv.workers.dev/m31). Em 06/10/2026, a cópia de staging recebeu 25.924 registros da origem, nove contas registradas e dois convites pendentes. A gestão entra por [/gestao](https://m31-staging.paulobituadv.workers.dev/gestao); o login geral fica em `/m31-login`. A senha antiga pode ser migrada no primeiro login, mantendo o Base44 ativo durante a transição. Detalhes e limites em [MIGRATION.md](docs/MIGRATION.md).
 
 React/Vite/Tailwind preservam as telas atuais. O Worker com Hono atende `/api/*`; Supabase fornece PostgreSQL, Auth, Storage e Realtime. Cron/Queues executam jobs com outbox. Integrações externas começam bloqueadas e o desenvolvimento utiliza providers sintéticos.
 
@@ -45,3 +45,5 @@ E2E_LIVE=1 E2E_BASE_URL=http://127.0.0.1:5173 npm run test:e2e
 ## Próxima etapa
 
 O repositório independente e o ambiente de homologação já existem. Produção exige recursos separados, domínio e credenciais próprios. Ainda faltam acesso operacional do cliente, configuração/homologação dos providers e ensaio de migração antes de qualquer troca. O repositório original continua conectado ao Base44 e não sofreu alterações. [CONTEXTO_PARA_CODEX.md](CONTEXTO_PARA_CODEX.md) orienta a continuidade.
+
+As credenciais reais recebidas foram guardadas no environment GitHub `production`, com aprovação obrigatória, e o deploy publica as integrações opcionais configuradas. Staging mantém providers e destinos reais separados. O novo receptor UAZAPI aceita os sufixos de evento/tipo da configuração antiga e remove o token de autenticação antes de gravar o job. Estado, inventário e pendências estão em [CLIENT_CONFIGURATION.md](docs/CLIENT_CONFIGURATION.md).

@@ -192,6 +192,16 @@ export function providerFetch(session: SessionContext): typeof fetch {
     }
     const headers = new Headers(init.headers);
     headers.set("User-Agent", "M31-independent/1");
+    if (provider === "asaas") {
+      if (headers.has("access-token") && !headers.has("access_token")) {
+        headers.set("access_token", headers.get("access-token")!);
+        headers.delete("access-token");
+      }
+      const asaasKey = configValue(session.env, "ASAAS_API_KEY");
+      if (asaasKey && !headers.has("access_token")) {
+        headers.set("access_token", asaasKey);
+      }
+    }
     let key: string | undefined;
     if (mutating && provider !== "openai") {
       key = await sha256(

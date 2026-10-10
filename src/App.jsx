@@ -43,6 +43,7 @@ import RequireAdmin from './components/RequireAdmin';
 import RequireCartinhas from './components/RequireCartinhas';
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 import { isCartinhasRoute } from './components/m31/cartinhas/cartinhasRouteAccess';
+import RequireM31Panel from './components/RequireM31Panel';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
@@ -99,10 +100,10 @@ const AuthenticatedApp = () => {
         />
       ))}
       <Route path="/m31-inscricao" element={<M31InscricaoPage />} />
-      <Route path="/m31-admin" element={<RequireAdmin><M31AdminPage /></RequireAdmin>} />
+      <Route path="/m31-admin" element={<RequireM31Panel panel="management"><M31AdminPage /></RequireM31Panel>} />
       <Route path="/m31" element={<M31LandingPage />} />
       <Route path="/m31-sem-acesso" element={<M31SemAcessoPage />} />
-      <Route path="/m31-coordenador" element={<RequireAdmin><M31CoordenadorPage /></RequireAdmin>} />
+      <Route path="/m31-coordenador" element={<RequireM31Panel panel="coordination"><M31CoordenadorPage /></RequireM31Panel>} />
       <Route path="/m31-caravana" element={<M31CaravanaForm />} />
       <Route path="/caravanam31filhas/tia-carla-recife" element={<M31CaravanaForm caravanaId="6a19aeba11ec4815b2ce9b7a" />} />
       <Route path="/m31-servir" element={<M31ServirForm />} />

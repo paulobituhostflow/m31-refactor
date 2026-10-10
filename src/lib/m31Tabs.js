@@ -51,7 +51,7 @@ export const ALL_TABS_CATEGORIZED = [
       { id: 'participantes', label: 'Inscritas & Caravanas',  icon: Users,          permissao: 'verParticipantes' },
       { id: 'config_evento', label: 'Configuração do Evento', icon: CalendarDays,   permissao: 'verLotes' },
       { id: 'voluntarios',   label: 'Voluntários',            icon: HeartHandshake, permissao: 'verVoluntariosHub' },
-      { id: 'intercessao',   label: 'Intercessão',            icon: HeartHandshake, permissao: 'verVoluntariosHub' },
+      { id: 'intercessao',   label: 'Intercessão',            icon: HeartHandshake, permissao: 'verIntercessao' },
       { id: 'checkin',       label: 'Check-in',               icon: UserCheck,      permissao: 'verParticipantes' },
     ],
   },

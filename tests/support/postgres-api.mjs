@@ -4,7 +4,7 @@ import { readFile, readdir } from "node:fs/promises";
 export async function postgresApi() {
   const pg = new PGlite();
   await pg.exec(
-    "CREATE ROLE anon;CREATE ROLE authenticated;CREATE ROLE service_role;CREATE SCHEMA auth;CREATE TABLE auth.users(id uuid PRIMARY KEY);CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE SQL AS $$ SELECT NULL::uuid $$;CREATE SCHEMA storage;CREATE TABLE storage.buckets(id text PRIMARY KEY,name text,public boolean,file_size_limit bigint);CREATE PUBLICATION supabase_realtime;",
+    "CREATE ROLE anon;CREATE ROLE authenticated;CREATE ROLE service_role;CREATE SCHEMA auth;CREATE TABLE auth.users(id uuid PRIMARY KEY,email text,encrypted_password text,raw_app_meta_data jsonb,email_confirmed_at timestamptz,updated_at timestamptz,banned_until timestamptz,last_sign_in_at timestamptz);CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE SQL AS $$ SELECT NULL::uuid $$;CREATE SCHEMA storage;CREATE TABLE storage.buckets(id text PRIMARY KEY,name text,public boolean,file_size_limit bigint);CREATE PUBLICATION supabase_realtime;CREATE SCHEMA extensions;CREATE FUNCTION extensions.digest(text,text) RETURNS bytea LANGUAGE SQL AS $$ SELECT convert_to($1,'UTF8') $$;",
   );
   for (const name of (await readdir("supabase/migrations")).sort())
     await pg.exec(

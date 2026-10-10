@@ -17,11 +17,16 @@ const taskProfiles = [
   "lider_setor",
 ];
 const readonlyProfiles = ["visualizacao"];
+const intercessaoFunctions = new Set([
+  "m31AuditoriaIntercessao",
+  "m31AuditoriaPagamentoIntercessao",
+]);
 export const PUBLIC_FUNCTIONS = new Set([
   "m31RegistrarIntencao",
   "m31RegistrarFalhaCheckout",
   "m31ConsultarFalhaCheckout",
   "m31CreatePayment",
+  "m31PrecoInscricaoPublico",
   "m31VoluntarioPayment",
   "m31CaravanaPayment",
   "m31CamisaVendaPayment",
@@ -66,6 +71,11 @@ export function functionPermission(
   if (!member?.ativo)
     throw new ApiError(403, "Conta sem permissão para esta operação.");
   if (
+    intercessaoFunctions.has(name) &&
+    member.perfil === "intercessao_operacional"
+  )
+    return;
+  if (
     name === "m31Checkin" &&
     (member.pode_checkin ||
       member.perfil === "checkin" ||
@@ -107,7 +117,7 @@ export function functionPermission(
     return;
   throw new ApiError(403, "Sem permissão para executar esta função.");
 }
-const publicRead = new Set(["EventoM31Lote", "EventPageConfig"]);
+const publicRead = new Set(["EventPageConfig"]);
 const participants = new Set([
   "EventoM31Inscricao",
   "EventoM31Caravana",

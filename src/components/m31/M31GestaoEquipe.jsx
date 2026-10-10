@@ -37,6 +37,13 @@ const PERFIS = [
     icon: '⚙️',
   },
   {
+    value: 'intercessao_operacional',
+    label: 'Intercessão',
+    color: '#A78BFA',
+    desc: 'Somente painel e auditoria da Intercessão',
+    icon: '🙏',
+  },
+  {
     value: 'lider_setor',
     label: 'Líder de Setor',
     color: '#34D399',

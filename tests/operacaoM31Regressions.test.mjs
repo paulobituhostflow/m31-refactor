@@ -21,7 +21,8 @@ function load(name, sdk, modules = []) {
   let handler;
   const source = harness.prepare(fs.readFileSync(new URL(`../worker/functions/${name}/entry.ts`, import.meta.url), 'utf8')).replace(/^import[^\n]+\n/gm, '');
   const helpers = modules.map(file => fs.readFileSync(new URL(`../worker/functions/${name}/${file}`, import.meta.url), 'utf8').replace(/^export /gm, '')).join('\n');
-  const context = vm.createContext({ Request, Response, URL, Date, Intl, console, crypto, atob, fetch: async () => { throw new Error('Unexpected provider request'); }, createClientFromRequest: () => sdk, Deno: { env: { get: () => undefined }, serve: fn => { handler = fn; } } });
+  const exportsObj = {}; const moduleObj = { exports: exportsObj };
+  const context = vm.createContext({ exports: exportsObj, module: moduleObj, Request, Response, URL, Date, Intl, console, crypto, atob, fetch: async () => { throw new Error('Unexpected provider request'); }, createClientFromRequest: () => sdk, Deno: { env: { get: () => undefined }, serve: fn => { handler = fn; } } });
   vm.runInContext(helpers + '\n' + ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText, context);
   return async body => { const response = await handler(new Request('https://example.invalid/test', { method: 'POST', body: JSON.stringify(body) })); return { status: response.status, body: await response.json() }; };
 }
