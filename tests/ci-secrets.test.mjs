@@ -51,7 +51,8 @@ test("CI uploads configured providers privately and excludes Auth/admin credenti
     assert.equal(data.WHATSAPP_GROUP_INVITE, extras.WHATSAPP_GROUP_INVITE);
     for (const key of ["SUPABASE_AUTH_SMTP_PASSWORD", "EXPORT_ENCRYPTION_KEY", "CLOUDFLARE_API_TOKEN"])
       assert.equal(Object.hasOwn(data, key), false);
-    assert.equal((await stat(filename)).mode & 0o777, 0o600);
+    if (process.platform !== "win32")
+      assert.equal((await stat(filename)).mode & 0o777, 0o600);
     for (const value of Object.values(extras))
       assert.equal((result.stdout + result.stderr).includes(value), false);
   });
