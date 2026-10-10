@@ -188,7 +188,7 @@ export default function M31GestaoAcesso() {
               type={mostrarSenha ? 'text' : 'password'}
               value={senha}
               onChange={(event) => setSenha(event.target.value)}
-              placeholder="Digite a senha (M31FILHAS)"
+              placeholder="Digite a senha"
               autoComplete="current-password"
               style={{ ...styles.input, paddingRight: '44px' }}
             />
@@ -209,7 +209,7 @@ export default function M31GestaoAcesso() {
           </button>
         </form>
 
-        <p style={styles.note}>Todas as responsáveis utilizam a senha da equipe (M31FILHAS).</p>
+
         <a href="/m31-login" style={{ ...styles.note, display: 'block', textAlign: 'center' }}>Acesso geral às outras áreas</a>
       </section>
     </main>
