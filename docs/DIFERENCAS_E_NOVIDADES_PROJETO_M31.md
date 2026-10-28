@@ -142,3 +142,86 @@ Para aplicar essas novidades no `m31-refactor` seguindo todos os padrões de **C
 4. **Validação, Testes e Qualidade:**
    - Adicionar testes de regressão automatizados para operações manuais, troca de titularidade e concorrência CAS.
    - Executar suíte de testes (`npm test`), lint (`npm run lint`), typecheck (`npm run typecheck`) e build do frontend e worker (`npm run build`).
+
+---
+
+## 6. Status de Execução e Checklist da Migração
+
+### ✅ O Que Já Foi Feito (Concluído)
+
+1. **Banco de Dados & Schema:**
+   - [x] Criada migration Supabase: `supabase/migrations/20261027000100_gestao_delegada_requisicao.sql` criando a tabela `m31_m31_gestao_requisicao` com índices, RLS restrito a `service_role`, lock seed e registro em `m31_entity_catalog`.
+   - [x] Catálogo de entidades do worker atualizado em `worker/catalog/entities.json` registrando a entidade `M31GestaoRequisicao`.
+
+2. **Backend & Cloudflare Worker (Handlers e Runtime):**
+   - [x] `worker/functions/m31AbrirSessaoOperacional/`: Sessão operacional com suporte a perfil `gestao_delegada`, permissões granulares por área (`inscritas`, `voluntarias`, `caravanas`, `camisas`) e `can_manage_team`.
+   - [x] `worker/functions/m31OperarParticipante/`: 10 arquivos portados com Clean Architecture:
+     - `entry.ts`, `core.js`, `gestaoAccess.js`, `gestaoMutationLock.js`, `gestaoSearch.js`, `filtrosInscritas.js`, `participacaoLiberada.js`, `participacaoReconhecida.js`, `groupMembership.js`, `comunicacao.js`.
+   - [x] `worker/functions/m31GestaoCaravanas/`: 6 arquivos portados:
+     - `entry.ts`, `core.js`, `gestaoAccess.js`, `gestaoMutationLock.js`, `camisasCaravana.js`, `camisasTemplate.json`.
+   - [x] `worker/functions/m31GestaoEquipe/`: 4 arquivos portados com proteção de admin:
+     - `entry.ts`, `core.js`, `gestaoAccess.js`, `gestaoMutationLock.js`.
+   - [x] `worker/functions/m31ReembolsoInscricao/`: 3 arquivos portados:
+     - `entry.ts`, `gestaoAccess.js`, `reembolsoAvaliacao.js` (permissão restrita ao gestor Paulo `paulobituadv@gmail.com`).
+   - [x] `worker/registry.ts`: Mapeamento correto de todos os handlers (`f205`, `f206`, `f207`) sem duplicações, totalizando 207 handlers registrados.
+   - [x] `worker/runtime/permissions.ts`: Registro de perfil `'gestao_delegada'` e autorização de `m31GestaoCaravanas`, `m31GestaoEquipe`, `m31ReembolsoInscricao`.
+
+3. **Frontend: Bibliotecas, Utilitários e Hooks:**
+   - [x] `src/lib/m31GestaoApi.js`: Bridge client-side para `/api/functions`, exportação de `participacaoStatus`, `TIPOS_INGRESSO` e `tipoIngresso`.
+   - [x] `src/lib/m31GestaoCache.js`: Sincronização e merge de cache otimista.
+   - [x] `src/lib/m31GestaoContato.js`: Formatadores WhatsApp e datas no padrão de Fortaleza.
+   - [x] `src/lib/m31GestaoEntry.js`: Identificação de rota de entrada e validação de sessão ativa.
+   - [x] `src/lib/m31GestaoTelefone.js`: Normalização de telefone DDI/DDD brasileiro.
+   - [x] `src/lib/shirtSupplyPlan.js`: Algoritmo de cálculo de demandas e faltas de camisas por grade.
+   - [x] `src/hooks/useM31Gestao.js`: React Query hooks (`useM31Gestao`, `useM31GestaoList`, `useM31GestaoDetail`).
+
+4. **Frontend: Componentes e Telas da Gestão Operacional:**
+   - [x] Componentes em `src/components/m31/operacional/gestao/`:
+     - `m31Gestao.css`: Design system bordô/branco (#8b1a2b).
+     - `VersiculoDoDia.jsx`: Mensagem bíblica diária inspiracional para voluntárias.
+     - `GestaoDialog.jsx`: Modal padronizado acessível.
+     - `GestaoAreaConsulta.jsx`: Visualização somente-leitura para voluntárias em modo consulta.
+     - `GestaoLoteDuplicidade.jsx`: Comparador lado a lado de duplicidades.
+     - `GestaoLoteBloco.jsx`: Bloco de revisão individual do assistente IA.
+     - `GestaoLoteIA.jsx`: Assistente de cadastro em lote de participantes com parsing inteligente.
+     - `GestaoQrExistente.jsx`: Exibição e geração do QR Code de credenciamento.
+     - `GestaoReembolsoConfirmar.jsx`, `GestaoReembolsoCard.jsx`, `GestaoReembolso.jsx`: Fluxo auditado de estorno.
+     - `GestaoComunicacao.jsx`: Ações rápidas de contato e disparo de mensagens.
+     - `GestaoInscricaoForm.jsx`: Formulário de criação e edição com validações.
+     - `GestaoInscricaoFicha.jsx`: Ficha completa da inscrita com status de pagamento, participação e caravana.
+     - `GestaoCamisasCaravana.jsx`: Gestão e conferência de camisas encomendadas por caravana.
+     - `GestaoPrecoCaravana.jsx`: Configuração de valores promocionais por caravana.
+     - `GestaoExcluirCaravana.jsx`: Exclusão segura de caravana com proteção de dados.
+     - `GestaoNovaCaravana.jsx`: Cadastro de novas caravanas com lock de concorrência.
+     - `GestaoCaravanas.jsx`: Painel central de controle de todas as caravanas do evento.
+   - [x] `src/components/m31/gestao/M31GestaoEquipeAcessos.jsx` & `M31GestaoEquipeAcessos.css`: Gestão de acessos da equipe.
+   - [x] `src/components/m31/operacional/inscritas/`:
+     - `confirmacaoResultado.js`: Mapeamento de regras de confirmação.
+     - `M31FilaConfirmacao.jsx`: Fila operacional de confirmações pendentes.
+     - `M31VinculoPagamento.jsx`: Vinculação de pagamentos órfãos.
+     - `M31InscritasOperational.css` & `M31InscritasOperational.jsx`: Tabela operacional com filtros, busca instantânea e paginação.
+   - [x] `src/components/m31/operacional/voluntarias/M31VoluntariasOperational.jsx`: Atualizado com resumos de intercessão e filtros.
+   - [x] `src/components/m31/operacional/camisas/hub/HubSupplyPlan.jsx` & `HubSupplyPlan.css`: Painel de suprimentos de camisas.
+   - [x] `src/components/m31/operacional/M31CamisasMobile.jsx` & `HubEstoque.jsx`: Conectados ao plano de suprimentos.
+   - [x] `src/components/m31/operacional/M31OperationalShell.jsx`: Topbar com marca M31 Filhas, `VersiculoDoDia`, perfil e navegação por abas dinâmicas.
+   - [x] `src/pages/M31GestaoMobile.jsx`: Orquestrador mobile/desktop com autenticação de sessão e chaveamento de abas.
+
+5. **Testes e Build:**
+   - [x] `npm run typecheck`: 0 erros (tanto no Worker quanto nas ferramentas).
+   - [x] `npm run lint`: 0 erros no ESLint.
+   - [x] `npm run build`: Build do Vite concluído com sucesso.
+   - [x] `npm run build:worker`: Build do Cloudflare Worker com Wrangler concluído com sucesso.
+   - [x] `node scripts/check-artifacts.mjs`: Validação de segurança concluída sem segredos ou vazamentos.
+   - [x] `tests/runtime.test.mjs`: Testes dos 207 handlers registrados passando com sucesso.
+   - [x] `tests/gestao/`: 14 testes automatizados de regressão de gestão passando com 100% de sucesso (`identidadeQr.test.mjs`, `manualForm.test.mjs`, `participacaoManual.test.mjs`).
+
+---
+
+### ⏳ O Que Falta / Próximos Passos (Backlog Secundário)
+
+1. **Central Comercial & Regras de Preço (Frente Futura):**
+   - Caso desejado pelo gestor em próximas iterações: migrar o simulador `m31CentralComercial` e regras dinâmicas de cupons/reajustes que foram prototipadas no `projeto-m31`.
+
+2. **Cartinhas em Lote (Frente Secundária):**
+   - Portar a tela de aprovação de cartinhas em lote (`cartinhasLoteAprovacao`) quando a equipe for operar a entrega de cartinhas no evento.
+

@@ -410,7 +410,6 @@ export const handlers = {
  "m31VincularPagamentoManual": f200,
  "m31VoluntarioPayment": f201,
  "m31WhatsAppService": f202,
- "m31OperarParticipante": f204,
  "m31GestaoCaravanas": f205,
  "m31GestaoEquipe": f206,
  "m31ReembolsoInscricao": f207

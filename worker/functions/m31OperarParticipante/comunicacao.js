@@ -72,6 +72,7 @@ export async function verifyGroup(S, row, deps = {}) {
 }
 
 export async function communicationHistory(S, row) {
+  if (!S?.M31FilaMensagem?.filter) return [];
   return (await S.M31FilaMensagem.filter({ inscricao_id: row.id }, '-created_date', 12, 0,
     ['id','status','template','automacao','processado_em','created_date','motivo_obsolescencia','motivo_reagendamento','motivo_bloqueio','erro'])).map(summary);
 }
