@@ -3,6 +3,7 @@ import { PackagePlus, Search } from 'lucide-react';
 import M31BottomSheet from '@/components/m31/operacional/M31BottomSheet';
 import ShirtStockSection from '@/components/m31/operacional/camisas/ShirtStockSection';
 import { formatStockMovement } from '@/lib/stockMovement';
+import { buildShirtSupplyPlan } from '@/lib/shirtSupplyPlan';
 
 const MODELOS = [
   { id: 'jesus', nome: 'Jesus' },
@@ -17,7 +18,7 @@ const labelClass = 'block text-sm font-semibold text-m31-ink';
 
 // Estoque: recebimento em lote (com histórico de compra) + ajuste por
 // modelo/cor/tamanho na grade já existente.
-export default function HubEstoque({ inventory, grade = [], movimentos = [], pending, preview, onUpdateEstoque, onReceber }) {
+export default function HubEstoque({ inventory, encomendas = [], grade = [], movimentos = [], pending, preview, onUpdateEstoque, onReceber }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [form, setForm] = useState(INITIAL);
@@ -29,7 +30,7 @@ export default function HubEstoque({ inventory, grade = [], movimentos = [], pen
   const recebidas = inventory.reduce((total, item) => total + Number(item.recebidas || 0), 0);
   const reservadas = inventory.reduce((total, item) => total + Number(item.reservadas || 0), 0);
   const disponivel = inventory.reduce((total, item) => total + Number(item.disponivel || 0), 0);
-  const necessidadeCompra = Math.max(0, demandaConfirmada - recebidas);
+  const necessidadeCompra = buildShirtSupplyPlan(inventory, encomendas).complementar;
 
   async function submit(event) {
     event.preventDefault();

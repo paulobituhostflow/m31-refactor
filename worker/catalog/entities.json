@@ -7534,5 +7534,47 @@
       "horario",
       "template_whatsapp"
     ]
+  },
+  "M31GestaoRequisicao": {
+    "name": "M31GestaoRequisicao",
+    "type": "object",
+    "properties": {
+      "chave": {
+        "type": "string"
+      },
+      "tipo": {
+        "type": "string"
+      },
+      "request_id": {
+        "type": "string"
+      },
+      "payload_hash": {
+        "type": "string"
+      },
+      "actor_id": {
+        "type": "string"
+      },
+      "estado": {
+        "type": "string"
+      },
+      "caravana_id": {
+        "type": "string"
+      },
+      "inscricao_id": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "chave",
+      "tipo",
+      "request_id",
+      "estado"
+    ],
+    "rls": {
+      "read": false,
+      "create": false,
+      "update": false,
+      "delete": false
+    }
   }
 }

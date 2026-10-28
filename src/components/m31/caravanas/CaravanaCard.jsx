@@ -1,10 +1,43 @@
 import { useState } from 'react';
+import { ChevronRight, Link2, Pencil } from 'lucide-react';
 import { C, STATUS_CFG, fmtBRL, isConfirmado, isPendente } from './CaravanasUtils';
 import { IcoWA, IcoChevron, IcoPin, IcoEdit, IcoPhone } from './CaravanasIcons';
 import { base44 } from '@/api/base44Client';
 import { useQueryClient } from '@tanstack/react-query';
 import CaravanaDeleteModal from './CaravanaDeleteModal';
 import CaravanaExportModal from './CaravanaExportModal';
+
+// A mesma apresentação da Central, alimentada por DTO e callbacks do backend.
+// Não renderiza os modais legados que alteram entidades diretamente.
+export function CaravanaGestaoCard({ caravana, expanded, onToggle, onEdit, canOperate, canViewFinance, detail, loading, error, onRetry, onOpenParticipant, onCopyLink, highlighted }) {
+  const [filter, setFilter] = useState('todas');
+  const total = caravana.total_participantes;
+  const confirmed = caravana.confirmadas;
+  const pending = caravana.pendentes;
+  const percentage = Number.isFinite(total) && total > 0 && Number.isFinite(confirmed) ? Math.round(confirmed / total * 100) : null;
+  const rows = detail?.participantes || [];
+  const filtered = rows.filter((row) => filter === 'todas' || (filter === 'confirmadas' ? row.estado_canonico === 'confirmada' : row.estado_canonico !== 'confirmada'));
+  const phone = String(caravana.lider_whatsapp || '').replace(/\D/g, '');
+  const whatsapp = phone.length >= 10 ? `https://wa.me/${phone.startsWith('55') && phone.length > 11 ? phone : `55${phone}`}` : null;
+  const count = (value) => Number.isFinite(value) ? value : '—';
+  return <article className={`m31-gestao-caravana-card${highlighted ? ' is-highlighted' : ''}`} id={`gestao-caravana-${caravana.id}`}>
+    <button type="button" className="m31-gestao-caravana-heading" onClick={onToggle} aria-expanded={expanded}>
+      <span><strong>{caravana.nome || 'Nome não informado'}</strong><span className="m31-gestao-caravana-context"><IcoPin />{caravana.cidade_origem || 'Cidade não informada'}<span>·</span>{caravana.lider_nome || 'Líder não informada'}</span></span>
+      <span className="m31-gestao-person-open">{expanded ? 'Ver menos' : 'Ver mais'}<IcoChevron open={expanded} /></span>
+    </button>
+    <div className="m31-gestao-caravana-summary"><strong className="is-confirmed">{count(confirmed)} confirmadas</strong><strong className="is-pending">{count(pending)} pendentes</strong><span>{count(total)} total</span>{canViewFinance && caravana.financeiro && <strong>{Number.isFinite(caravana.financeiro.receita) ? fmtBRL(caravana.financeiro.receita) : 'Receita não informada'}</strong>}</div>
+    {percentage !== null && <div className="m31-gestao-caravana-progress" role="img" aria-label={`${percentage}% das participantes confirmadas`}><span style={{ width: `${Math.min(100, percentage)}%` }} /></div>}
+    <div className="m31-gestao-caravana-actions">
+      <div className="m31-gestao-caravana-alerts">{!caravana.lider_nome && <AlertBadge label="Sem líder" color={C.warning} bg={C.warningSoft} />}{caravana.revisar > 0 && <AlertBadge label={`${caravana.revisar} em revisão`} color={C.warning} bg={C.warningSoft} />}{caravana.sem_informacao > 0 && <AlertBadge label={`${caravana.sem_informacao} sem informação`} color={C.textSec} bg={C.bg4} />}</div>
+      <div><button type="button" className="m31-gestao-btn" onClick={onCopyLink}><Link2 size={16} aria-hidden="true" /><span>Copiar link</span></button>{whatsapp && <a href={whatsapp} target="_blank" rel="noopener noreferrer" className="m31-gestao-btn"><IcoWA /><span>WhatsApp</span></a>}{canOperate && <button type="button" className="m31-gestao-btn" onClick={onEdit}><Pencil size={16} aria-hidden="true" /><span>Editar</span></button>}</div>
+    </div>
+    {expanded && <div className="m31-gestao-caravana-members">
+      <h3>Participantes da caravana</h3>
+      <div className="m31-gestao-filters" role="group" aria-label="Filtrar participantes da caravana">{[['todas', 'Todas'], ['confirmadas', 'Confirmadas'], ['acao', 'Precisam de ação']].map(([key, label]) => <button type="button" key={key} aria-pressed={filter === key} onClick={() => setFilter(key)}>{label}</button>)}</div>
+      {loading ? <p role="status" className="m31-gestao-muted">Carregando participantes…</p> : error ? <div className="m31-gestao-error" role="alert"><p>Não foi possível carregar as participantes.</p><button type="button" className="m31-gestao-btn" onClick={onRetry}>Tentar novamente</button></div> : !filtered.length ? <p className="m31-gestao-muted">Nenhuma participante nesta seleção.</p> : <div className="m31-gestao-caravana-member-list">{filtered.map((row) => <button type="button" key={row.id} className="m31-gestao-caravana-member" onClick={() => onOpenParticipant(row.id)}><span><strong>{row.nome || 'Nome não informado'}</strong><small>{row.whatsapp || 'WhatsApp não informado'}</small></span><span className="m31-gestao-caravana-member-status"><StatusBadge status={row.status_pagamento || 'Não informado'} /><span className="m31-gestao-person-open">Ver mais<ChevronRight size={16} aria-hidden="true" /></span></span></button>)}</div>}
+    </div>}
+  </article>;
+}
 
 // ── ALERT BADGE ───────────────────────────────────────────────
 function AlertBadge({ label, color, bg }) {

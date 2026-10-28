@@ -18,6 +18,7 @@ import NovoPedidoSheet from './camisas/hub/NovoPedidoSheet';
 import NovoClienteSheet from './camisas/hub/NovoClienteSheet';
 import PedidoQuickDrawer from './camisas/hub/PedidoQuickDrawer';
 import { groupShirtRows } from '@/lib/groupShirtRows';
+import { buildShirtSupplyPlan } from '@/lib/shirtSupplyPlan';
 import ShirtPresaleConfig from './ShirtPresaleConfig';
 
 const PLANILHA_URL = 'https://docs.google.com/spreadsheets/d/1aTvj2mYRs-F3LVcoohwlVdMF9bPwJbTenX4jLW3q9mc';
@@ -79,7 +80,8 @@ export default function M31CamisasMobile({ sessionId, preview = false, onBack })
   const clientes = preview ? PREVIEW_DATA.clientes : hub.clientes.data?.clientes || [];
   const pending = query.updateShirt.isPending || hub.mutateHub.isPending;
   const currentOrder = quickOrder ? groupShirtRows(rows).find((order) => order.row_id === quickOrder.row_id || order.itens.some((item) => item.row_id === quickOrder.row_id)) || quickOrder : null;
-  const alertasEstoque = inventory.filter((combo) => combo.reservadas > combo.disponivel).length;
+  const encomendas = preview ? [] : query.data?.encomendas || [];
+  const alertasEstoque = buildShirtSupplyPlan(inventory, encomendas).faltas.length;
 
   const badges = useMemo(() => ({
     pedidos: summary?.precisam_acao || undefined,
@@ -321,7 +323,7 @@ export default function M31CamisasMobile({ sessionId, preview = false, onBack })
       )}
 
       {view === 'estoque' && (
-        <HubEstoque inventory={inventory} grade={grade} movimentos={movimentosEstoque} pending={pending} preview={preview} onUpdateEstoque={atualizarEstoque} onReceber={receberEstoque} />
+        <HubEstoque inventory={inventory} encomendas={encomendas} grade={grade} movimentos={movimentosEstoque} pending={pending} preview={preview} onUpdateEstoque={atualizarEstoque} onReceber={receberEstoque} />
       )}
 
       {view === 'clientes' && (

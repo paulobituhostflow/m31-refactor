@@ -202,6 +202,9 @@ import f199 from "./functions/m31VerificarParcelamentos/entry";
 import f200 from "./functions/m31VincularPagamentoManual/entry";
 import f201 from "./functions/m31VoluntarioPayment/entry";
 import f202 from "./functions/m31WhatsAppService/entry";
+import f205 from "./functions/m31GestaoCaravanas/entry";
+import f206 from "./functions/m31GestaoEquipe/entry";
+import f207 from "./functions/m31ReembolsoInscricao/entry";
 export const handlers = {
  "m31-caravana-diagnostico": f0,
  "m31-caravana-flow": f1,
@@ -406,5 +409,9 @@ export const handlers = {
  "m31VerificarParcelamentos": f199,
  "m31VincularPagamentoManual": f200,
  "m31VoluntarioPayment": f201,
- "m31WhatsAppService": f202
+ "m31WhatsAppService": f202,
+ "m31OperarParticipante": f204,
+ "m31GestaoCaravanas": f205,
+ "m31GestaoEquipe": f206,
+ "m31ReembolsoInscricao": f207
 };

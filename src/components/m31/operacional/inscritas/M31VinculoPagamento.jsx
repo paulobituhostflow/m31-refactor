@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { textoConfirmacao } from './confirmacaoResultado';
 
 const GATEWAYS = [
   { value: 'mercado_pago', label: 'Mercado Pago' },
@@ -31,6 +32,7 @@ export default function M31VinculoPagamento({ inscricao, sessionId, onDone, onCa
   const [status, setStatus] = useState('');
   const [erro, setErro] = useState('');
   const [salvando, setSalvando] = useState(false);
+  const [resultado, setResultado] = useState(null);
 
   const selectCls = 'min-h-12 w-full rounded-xl border border-m31-border bg-white px-3 text-sm font-medium text-m31-ink';
 
@@ -45,7 +47,7 @@ export default function M31VinculoPagamento({ inscricao, sessionId, onDone, onCa
         status_pagamento: status,
       });
       const d = res?.data || res;
-      if (d?.ok) onDone(d);
+      if (d?.ok) setResultado(d);
       else setErro(ERROS[d?.error] || d?.error || 'Não foi possível consolidar a inscrição.');
     } catch (e) {
       setErro(ERROS[e?.response?.data?.error] || 'Falha de conexão. Tente novamente.');
@@ -53,6 +55,15 @@ export default function M31VinculoPagamento({ inscricao, sessionId, onDone, onCa
       setSalvando(false);
     }
   }
+
+  if (resultado) return (
+    <div className="rounded-xl border border-m31-border bg-m31-surface-warm p-4">
+      <p className="font-bold text-m31-ink">Situação da inscrição salva</p>
+      <p role="status" className="mt-2 text-sm leading-6 text-m31-ink">{textoConfirmacao(resultado.confirmacao)}</p>
+      {resultado.confirmacao?.motivo && <p className="mt-1 break-words text-xs text-m31-text-muted">Motivo: {resultado.confirmacao.motivo}</p>}
+      <button type="button" onClick={() => onDone(resultado)} className="mt-4 min-h-12 w-full rounded-xl bg-m31-primary font-bold text-white">Concluir</button>
+    </div>
+  );
 
   return (
     <div className="rounded-xl border border-m31-border bg-m31-surface-warm p-4">
@@ -62,6 +73,7 @@ export default function M31VinculoPagamento({ inscricao, sessionId, onDone, onCa
       </p>
       <p className="mt-1 text-xs leading-5 text-m31-text-muted">
         Use quando o pagamento existe mas o sistema não o vinculou. O vínculo é registrado em seu nome na auditoria.
+        Ao confirmar pagamento ou cortesia, a primeira confirmação entra na fila segura. Isso não reenvia uma confirmação já registrada.
       </p>
       <label className="mt-3 block text-xs font-semibold uppercase tracking-wide text-m31-text-muted">Gateway original</label>
       <select value={gateway} onChange={(e) => setGateway(e.target.value)} className={`mt-1 ${selectCls}`}>

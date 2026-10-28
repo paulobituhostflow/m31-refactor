@@ -9,6 +9,7 @@ const participantProfiles = [
   "coordenacao_participantes",
   "coordenadora_geral",
   "coordenador",
+  "gestao_delegada",
 ];
 const taskProfiles = [
   "gestao_operacional",
@@ -44,6 +45,9 @@ const participantFunctions = new Set([
   "m31AbrirSessaoOperacional",
   "m31ResumoOperacional",
   "m31OperarParticipante",
+  "m31GestaoCaravanas",
+  "m31GestaoEquipe",
+  "m31ReembolsoInscricao",
   "m31GerarLinkTransferencia",
   "m31ConsultarInscrita",
   "m31ListarDuplicadosRevisao",

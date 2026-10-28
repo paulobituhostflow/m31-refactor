@@ -57,7 +57,7 @@ export const base44 = {
     setToken: async token=>{const {data}=await getSupabase().auth.getSession();if(!data.session||data.session.access_token!==token)throw new Error("Conclua o login para registrar uma sessão válida.");return true;},
     loginWithProvider: async (_provider, returnTo) => { sessionStorage.setItem('m31_return_to', safeReturnTo(returnTo)); const r = await getSupabase().auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${location.origin}/m31-auth-callback` } }); if (r.error) throw r.error; },
     resetPasswordRequest: async email => { const r = await getSupabase().auth.resetPasswordForEmail(email, { redirectTo: `${location.origin}/m31-reset-password` }); if (r.error) throw r.error; },
-    logout: async returnTo => { await request('/auth/logout', {}); await getSupabase().auth.signOut(); if (returnTo) location.assign('/m31-login'); },
+    logout: async returnTo => { await request('/auth/logout', {}); await getSupabase().auth.signOut(); if (returnTo) location.assign(safeReturnTo(returnTo)); },
     redirectToLogin: returnTo => { sessionStorage.setItem('m31_return_to', safeReturnTo(returnTo)); location.assign('/m31-login'); },
     trackAccess:()=>request('/auth/access',{}).then(r=>r.data),
     updateMe: data => request('/auth/profile', data).then(r => r.data),

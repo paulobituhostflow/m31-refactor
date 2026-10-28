@@ -1,0 +1,11 @@
+{
+  "chave_unica":"camisa_caravana_paga_lider_v1",
+  "name":"Caravana — compra de camisas paga",
+  "categoria":"pagamento",
+  "canal":"whatsapp",
+  "trigger_stage":"manual",
+  "escopo":"m31ProcessarWebhookAsaas:camisas_caravana",
+  "is_active":true,
+  "content":"Olá, {{lider_nome}}! Uma compra de camisas da caravana {{caravana_nome}} teve o pagamento confirmado.\n\nPedido {{codigo_pedido}}\nCompradora: {{compradora_nome}}\n{{itens}}\nQuantidade: {{quantidade}}\nTotal pago: {{valor_pago}}\n\nAcompanhe os pedidos da sua caravana na Gestão M31.",
+  "variaveis_permitidas":["lider_nome","caravana_nome","codigo_pedido","compradora_nome","itens","quantidade","valor_pago"]
+}

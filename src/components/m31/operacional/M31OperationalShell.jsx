@@ -1,37 +1,31 @@
-import { Ellipsis, Home, LogOut } from 'lucide-react';
+import { Bus, HeartHandshake, LogOut, Shirt, UsersRound, Users } from 'lucide-react';
+import VersiculoDoDia from './gestao/VersiculoDoDia';
+import './gestao/m31Gestao.css';
 
-const LOGO = '/assets/a22f06b49_LOGOM31FILHAS1.png';
+const AREAS = {
+  inscritas: { label: 'Inscritas', Icon: UsersRound },
+  voluntarias: { label: 'Voluntárias', Icon: HeartHandshake },
+  caravanas: { label: 'Caravanas', Icon: Bus },
+  camisas: { label: 'Camisas', Icon: Shirt },
+  equipe: { label: 'Equipe', Icon: Users },
+};
 
-export default function M31OperationalShell({ operatorName, activeView, pullHandlers, onHome, onMore, onLogout, children }) {
-  return (
-    <div className="min-h-dvh bg-m31-canvas font-m31 text-m31-ink" {...pullHandlers}>
-      <header className="sticky top-0 z-20 border-b border-m31-border bg-m31-surface">
-        <div className="mx-auto flex h-14 max-w-xl items-center justify-between px-4">
-          <img src={LOGO} alt="M31 Filhas" className="h-8 w-auto object-contain" />
-          <div className="flex items-center gap-2">
-            <span className="max-w-32 truncate text-sm font-semibold text-m31-text-muted">{operatorName}</span>
-            <button type="button" onClick={onLogout} aria-label="Sair do painel" className="flex h-12 w-12 items-center justify-center rounded-lg text-m31-text-muted active:bg-m31-surface-warm">
-              <LogOut aria-hidden="true" className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto w-full max-w-xl px-4 pb-24 pt-5">{children}</main>
-
-      <nav aria-label="Navegação principal" className="fixed inset-x-0 bottom-0 z-30 border-t border-m31-border bg-m31-surface">
-        <div className="mx-auto flex h-16 max-w-xl">
-          <button type="button" onClick={onHome} className={activeView === 'inicio' ? 'flex min-h-12 flex-1 flex-col items-center justify-center gap-1 text-m31-primary' : 'flex min-h-12 flex-1 flex-col items-center justify-center gap-1 text-m31-text-muted'}>
-            <Home aria-hidden="true" className="h-5 w-5" />
-            <span className="text-xs font-semibold">Início</span>
-          </button>
-          <button type="button" onClick={onMore} className={activeView === 'mais' ? 'flex min-h-12 flex-1 flex-col items-center justify-center gap-1 text-m31-primary' : 'flex min-h-12 flex-1 flex-col items-center justify-center gap-1 text-m31-text-muted'}>
-            <Ellipsis aria-hidden="true" className="h-5 w-5" />
-            <span className="text-xs font-semibold">Mais</span>
-          </button>
-        </div>
+export default function M31OperationalShell({ operatorName, activeView, areas = [], modo, adminAccess = false, onNavigate, onLogout, children }) {
+  return <div className="m31-gestao">
+    <header className="m31-gestao-topbar"><div className="m31-gestao-topbar-inner">
+      <a href="/m31-gestao-mobile" className="m31-gestao-brand" aria-label="M31 Filhas"><img src="/assets/a22f06b49_LOGOM31FILHAS1.png" alt="M31 Filhas" /><span>M31 Filhas</span></a>
+      <div className="m31-gestao-personal"><div className="m31-gestao-identity"><strong>{operatorName}</strong><span>{modo === 'consulta' ? 'Somente consulta' : 'Operação'}</span></div><VersiculoDoDia /></div>
+      <button type="button" className="m31-gestao-btn m31-gestao-btn-quiet m31-gestao-logout" onClick={onLogout} aria-label="Sair da minha conta"><LogOut size={18} aria-hidden="true" /><span>Sair</span></button>
+    </div></header>
+    <div className="m31-gestao-workspace">
+      <nav className="m31-gestao-nav" aria-label="Navegação principal">
+        {areas.filter((area) => AREAS[area]).map((area) => {
+          const { label, Icon } = AREAS[area];
+          return <button key={area} type="button" onClick={() => onNavigate(area)} aria-current={activeView === area ? 'page' : undefined}><Icon size={19} aria-hidden="true" />{label}</button>;
+        })}
       </nav>
+      <main className="m31-gestao-content" id="gestao-conteudo">{children}</main>
+      {adminAccess && <footer className="m31-gestao-admin-link"><a href="/admin">Painel administrativo</a></footer>}
     </div>
-  );
+  </div>;
 }
-
